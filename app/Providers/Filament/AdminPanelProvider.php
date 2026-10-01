@@ -36,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->authGuard('web')
             ->brandName(fn (): string => (string) config('app.name'))
             ->plugin(ModulesPlugin::make())
-            ->navigationGroups(['User Management', 'System'])
+            ->navigationGroups(['User Management', 'Catalog', 'System'])
             ->colors([
                 'primary' => Color::Blue,
             ])

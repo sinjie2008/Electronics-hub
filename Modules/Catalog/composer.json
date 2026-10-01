@@ -1,0 +1,20 @@
+{
+    "name": "catalog-suite/catalog",
+    "description": "Native Catalog module for Laravel 13 and nWidart Modules v13",
+    "type": "library",
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^13.0",
+        "nwidart/laravel-modules": "^13.0",
+        "ext-mysqli": "*",
+        "ext-pdo_mysql": "*",
+        "ext-mbstring": "*",
+        "ext-fileinfo": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Catalog\\": "app/",
+            "Modules\\Catalog\\Database\\Seeders\\": "database/seeders/"
+        }
+    }
+}

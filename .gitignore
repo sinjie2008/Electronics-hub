@@ -45,5 +45,6 @@ Thumbs.db
 /bootstrap/cache/*.php
 /phpstan-cache/
 /dump.rdb
+/storage/app/catalog/
 
 /modules_statuses.json.lock

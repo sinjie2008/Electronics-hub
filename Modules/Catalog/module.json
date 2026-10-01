@@ -1,0 +1,10 @@
+{
+    "name": "Catalog",
+    "alias": "catalog",
+    "description": "Catalog, specification search, CSV tools and Typst/LaTeX APIs",
+    "keywords": ["catalog"],
+    "priority": 0,
+    "requires": ["Core", "IAM"],
+    "providers": ["Modules\\Catalog\\Providers\\CatalogServiceProvider"],
+    "files": []
+}

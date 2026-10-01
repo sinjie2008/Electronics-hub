@@ -1,0 +1,18 @@
+{
+  "css/catalog_ui.css": "fbb2fdd797cc6794",
+  "css/global_typst_template.css": "299782352e3a575f",
+  "css/latex-templating.css": "946d60bd08947114",
+  "css/series_typst_template.css": "14639f5eb9eedff6",
+  "css/sidebar-nav.css": "94d2c578c3b04670",
+  "css/spec_search.css": "f6618cd092f6bd38",
+  "js/app_error.js": "63d81086c4dfa46f",
+  "js/app_loading.js": "8a38ebffe31f0861",
+  "js/catalog_csv.js": "e0be999b993c371d",
+  "js/catalog_ui.js": "cba649450db3d3ca",
+  "js/global-typst-templating.js": "e40108fa879e88a7",
+  "js/latex-templating.js": "a7b6d0eadeaebd65",
+  "js/mathjax-config.js": "8c33fb2d5741606e",
+  "js/series-typst-templating.js": "d5e237f2377bcd94",
+  "js/sidebar-nav.js": "d76db775f0d84dfe",
+  "js/spec_search.js": "ffa08bc8a235212b"
+}

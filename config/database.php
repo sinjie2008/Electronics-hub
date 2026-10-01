@@ -32,6 +32,22 @@ return [
 
     'connections' => [
 
+        'catalog' => [
+            'driver' => 'mysql',
+            'host' => env('CATALOG_DB_HOST', '127.0.0.1'),
+            'port' => env('CATALOG_DB_PORT', '3306'),
+            'database' => env('CATALOG_DB_DATABASE', ''),
+            'username' => env('CATALOG_DB_USERNAME', ''),
+            'password' => env('CATALOG_DB_PASSWORD', ''),
+            'unix_socket' => env('CATALOG_DB_SOCKET', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),

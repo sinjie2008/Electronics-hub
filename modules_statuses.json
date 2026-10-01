@@ -1,5 +1,6 @@
 {
     "Core": true,
     "IAM": true,
-    "System": true
+    "System": true,
+    "Catalog": true
 }

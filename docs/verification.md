@@ -1,6 +1,8 @@
-# Implementation verification
+# Boilerplate baseline verification record
 
-Verified on 2026-10-01. Package versions below come from `composer.lock`, rather than dependency constraint estimates. The application is at the repository root.
+> Historical record: the results below were collected for the Boilerplate before the Native Catalog module and its Filament integration were added. They do not verify the current merged tree, Catalog's separate MySQL database, Catalog asset build, its permissions, or its Filament module behavior. The updated workflow is the gate for those checks; this document does not claim that they have passed.
+
+The Boilerplate baseline was verified on 2026-10-01. Package versions below come from the then-current `composer.lock`, rather than dependency constraint estimates. The application is at the repository root.
 
 ## Environment
 
@@ -97,3 +99,7 @@ A separate production copy ran `composer install --no-dev --no-interaction --pre
 - GitHub Actions is configured for Linux/PHP 8.4/MySQL/Redis. Local commands and integrations passed; remote workflow execution is tracked separately in GitHub Actions.
 
 See [package compatibility](package-compatibility.md) for upstream requirement evidence, and [development operations](development.md) for reproducible setup and deployment checks.
+
+## Catalog integration gates
+
+The current workflow provisions a disposable Catalog schema, builds the independently locked Catalog assets, applies the explicit Catalog migration and seeder, lists Catalog routes and modules, and runs the existing quality checks. These commands have not been executed as part of this record. Treat current integration validation as pending until the updated GitHub Actions workflow completes successfully and Catalog-specific behavior has been reviewed against disposable data.

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="{{ $catalogBaseUrl }}/">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LaTeX Template Workspace</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] }}">
+    <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] }}">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body data-logging-enabled="true">
+    <div class="container-fluid px-0 app-shell">
+        <div class="row flex-lg-nowrap g-0">
+            <aside class="col-12 col-lg-3 col-xl-2 sidebar-column">
+                <div class="sidebar-panel" id="pageSidebar" aria-label="Sidebar Navigation">
+                    <div class="sidebar-brand">
+                        <div class="brand-text">
+                            <div class="title">Catalog Suite</div>
+                            <div class="subtitle">AdminLTE-inspired</div>
+                        </div>
+                        <button class="btn btn-sm sidebar-collapse-btn" type="button" data-sidebar-collapse="true" aria-label="Collapse sidebar">
+                            <span class="btn-icon">&#9776;</span>
+                        </button>
+                    </div>
+                    <div class="sidebar-heading">Navigation</div>
+                    <nav class="sidebar-nav nav flex-column">
+                        <a class="nav-link" href="spec-search.html">
+                            <span class="sidebar-indicator"></span>
+                            <span class="nav-label">Spec Search</span>
+                        </a>
+                        <a class="nav-link" href="catalog_ui.html">
+                            <span class="sidebar-indicator"></span>
+                            <span class="nav-label">Catalog UI</span>
+                        </a>
+                        <a class="nav-link" href="catalog-csv.html">
+                            <span class="sidebar-indicator"></span>
+                            <span class="nav-label">CSV Import/Export</span>
+                        </a>
+                        <a class="nav-link active" aria-current="page" href="latex-templating.html">
+                            <span class="sidebar-indicator"></span>
+                            <span class="nav-label">LaTeX Templating</span>
+                        </a>
+                    </nav>
+                </div>
+            </aside>
+            <main class="col-12 col-lg-9 col-xl-10 content-column">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
+                    <div>
+                        <h1 class="h3 mb-1">LaTeX Templates</h1>
+                        <p class="text-muted mb-0">Manage reusable LaTeX snippets, preview them live, and export PDFs powered by MiKTeX.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary text-uppercase fw-semibold d-none d-lg-inline">Bootstrap 5 + DataTables</span>
+                        <button class="btn btn-outline-primary d-lg-none app-nav-toggle" type="button" data-sidebar-toggle="true">
+                            Open Navigation
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-md-end mb-3 d-lg-none">
+                    <span class="badge bg-primary text-uppercase fw-semibold">Bootstrap 5 + DataTables</span>
+                </div>
+                <div id="statusAlert" class="alert-placeholder" aria-live="polite"></div>
+
+                <section class="template-panel">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                <div>
+                    <h2 class="mb-0">Templates Catalog</h2>
+                    <p class="text-muted mb-0">Search, sort, and manage existing LaTeX templates.</p>
+                </div>
+                <button type="button" id="refreshTemplatesButton" class="btn btn-outline-secondary mt-3 mt-md-0">
+                    Refresh List
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table id="latexTemplatesTable" class="table table-striped table-hover align-middle w-100">
+                    <thead>
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <div class="row g-4">
+            <div class="col-12 col-lg-6">
+                <section class="template-panel h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2 class="mb-0">Template Editor</h2>
+                        <span id="formModeBadge" class="badge bg-info text-dark">New</span>
+                    </div>
+                    <form id="templateForm" novalidate>
+                        <input type="hidden" id="templateId">
+                        <div class="mb-3">
+                            <label for="templateTitle" class="form-label">Title<span class="text-danger">*</span></label>
+                            <input type="text" id="templateTitle" class="form-control" placeholder="Invoice Template" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="templateDescription" class="form-label">Description</label>
+                            <textarea id="templateDescription" class="form-control" rows="3" placeholder="Optional summary for quick reference."></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="latexSource" class="form-label">LaTeX Source<span class="text-danger">*</span></label>
+                            <textarea id="latexSource" class="form-control" rows="15" spellcheck="false" placeholder="\\documentclass{article}\n\\begin{document}\n Hello LaTeX!\n\\end{document}" required></textarea>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" id="newTemplateButton" class="btn btn-outline-secondary">New Template</button>
+                            <button type="submit" id="saveTemplateButton" class="btn btn-primary">Save Template</button>
+                            <button type="button" id="buildTemplateButton" class="btn btn-success">Build LaTeX &amp; Generate PDF</button>
+                            <button type="button" id="deleteTemplateButton" class="btn btn-outline-danger">Delete Template</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <div class="col-12 col-lg-6">
+                <section class="template-panel mb-4">
+                    <h2 class="mb-3">Live Preview</h2>
+                    <div id="latex-preview-render" class="mb-3 text-muted">
+                        Start typing LaTeX to see a live preview rendered with MathJax.
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h3 class="mb-0 fs-6">Raw Source Snapshot</h3>
+                            <small class="text-muted">Auto-updated</small>
+                        </div>
+                        <pre id="latex-preview-source"></pre>
+                    </div>
+                </section>
+                <section class="template-panel">
+                    <h2 class="mb-3">PDF Output</h2>
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <a id="pdfDownloadLink" class="btn btn-outline-primary d-none" target="_blank" rel="noopener">Download Latest PDF</a>
+                        <span id="pdfStatusText" class="text-muted"></span>
+                    </div>
+                    <iframe id="pdfPreviewFrame" class="pdf-frame d-none" title="PDF preview" aria-label="PDF preview"></iframe>
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h3 class="mb-0 fs-6">Build Log</h3>
+                            <small class="text-muted" id="buildMetaDetails"></small>
+                        </div>
+                        <pre id="latex-build-log" class="mb-0"></pre>
+                    </div>
+                </section>
+            </div>
+        </div>
+            </main>
+        </div>
+        <div class="sidebar-backdrop" aria-hidden="true"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] }}"></script>
+    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] }}"></script>
+    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] }}"></script>
+    <script type="module" src="assets/js/latex-templating.js?v={{ $catalogAssetVersions['js/latex-templating.js'] }}"></script>
+    <script src="assets/js/mathjax-config.js?v={{ $catalogAssetVersions['js/mathjax-config.js'] }}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body>
+</html>

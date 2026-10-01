@@ -3,6 +3,9 @@ includes:
 
 parameters:
     level: 5
+    configDirectories:
+        - config
+        - Modules/*/config
     paths:
         - app
         - Modules

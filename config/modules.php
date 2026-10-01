@@ -221,7 +221,8 @@ return [
         | This option for register migration automatically.
         |
         */
-        'migrations' => true,
+        // Catalog owns a separate database and migration ledger. Run its module command explicitly.
+        'migrations' => false,
 
         /*
         |--------------------------------------------------------------------------
