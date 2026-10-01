@@ -26,6 +26,8 @@ npm run build:assets
 
 The module serves its generated assets independently of the host Vite build. PDF generation invokes external tools: install Typst for Typst documents and `pdflatex` for LaTeX documents. Set `CATALOG_TYPST_BIN` or `CATALOG_PDFLATEX_BIN` when the executable is not available under its default command name.
 
+The host backup defaults still cover the application database and `storage/app/private`. To include Catalog in deployment backups, add its connection name to `backup.backup.source.databases` and its configured storage root to `backup.backup.source.files.include` in `config/backup.php`. Keep backup destinations private and verify the combined archive on the Linux backup worker after changing those sources.
+
 ## Access and compatibility
 
 The host seeder creates `catalog.view`, `catalog.create`, `catalog.update`, and `catalog.delete` in the application database. It does not grant these permissions to the `Admin` role automatically. Assign only the permissions needed through `/admin/roles`; active Super Admins use the host application's existing bypass. Filament operations authorize writes through `CatalogAdminService` and `CatalogPolicy`, then invoke the imported domain services. After disabling Catalog or changing its module code, clear Laravel and Filament's component caches with `php artisan optimize:clear` and `php artisan filament:optimize-clear`; before serving a production release, rebuild the caches with `php artisan optimize` and `php artisan filament:optimize`.

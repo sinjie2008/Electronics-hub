@@ -57,6 +57,7 @@ class TypstTemplateResource extends CatalogResource
                         ->disabled(fn (string $operation): bool => $operation === 'edit')
                         ->dehydrated(),
                     Select::make('series_id')
+                        ->label('Series')
                         ->options(fn (): array => static::seriesOptions())
                         ->searchable()
                         ->visible(fn (Get $get): bool => ! (bool) $get('is_global'))

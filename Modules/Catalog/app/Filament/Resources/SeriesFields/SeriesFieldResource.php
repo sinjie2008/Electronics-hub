@@ -49,6 +49,7 @@ class SeriesFieldResource extends CatalogResource
                 ->columns(2)
                 ->schema([
                     Select::make('series_id')
+                        ->label('Series')
                         ->options(fn (): array => static::seriesOptions())
                         ->searchable()
                         ->required()

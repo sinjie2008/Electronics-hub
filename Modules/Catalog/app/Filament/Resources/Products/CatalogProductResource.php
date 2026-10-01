@@ -43,6 +43,7 @@ class CatalogProductResource extends CatalogResource
     {
         return $schema->components([
             Select::make('series_id')
+                ->label('Series')
                 ->options(fn (): array => static::seriesOptions())
                 ->searchable()
                 ->required()
@@ -50,6 +51,7 @@ class CatalogProductResource extends CatalogResource
                 ->disabled(fn (string $operation): bool => $operation === 'edit')
                 ->dehydrated(),
             TextInput::make('sku')
+                ->label('SKU')
                 ->required()
                 ->maxLength(128)
                 ->unique(
@@ -65,7 +67,7 @@ class CatalogProductResource extends CatalogResource
                 ->rows(4)
                 ->columnSpanFull(),
             Section::make('Product attributes')
-                ->description('Values are saved through Catalog business services. File values are read-only in Filament.')
+                ->description('Edit attributes for the selected series. Use the Catalog interface to upload files.')
                 ->columns(2)
                 ->schema(fn (Get $get): array => self::productValueInputs((int) $get('series_id')))
                 ->visible(fn (Get $get): bool => filled($get('series_id'))),
@@ -79,7 +81,7 @@ class CatalogProductResource extends CatalogResource
                 ->columns(2)
                 ->schema([
                     TextEntry::make('series.name')->label('Series'),
-                    TextEntry::make('sku'),
+                    TextEntry::make('sku')->label('SKU'),
                     TextEntry::make('name'),
                     TextEntry::make('description')->columnSpanFull()->placeholder('—'),
                 ]),
@@ -96,7 +98,7 @@ class CatalogProductResource extends CatalogResource
     {
         return $table
             ->columns([
-                TextColumn::make('sku')->searchable()->sortable(),
+                TextColumn::make('sku')->label('SKU')->searchable()->sortable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('series.name')->label('Series')->searchable()->sortable(),
                 TextColumn::make('updated_at')->dateTime()->sortable(),
