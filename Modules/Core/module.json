@@ -1,0 +1,12 @@
+{
+    "name": "Core",
+    "alias": "core",
+    "description": "Shared application information and extension contracts.",
+    "version": "1.0.0",
+    "priority": 0,
+    "requires": [],
+    "providers": [
+        "Modules\\Core\\Providers\\CoreServiceProvider"
+    ],
+    "files": []
+}

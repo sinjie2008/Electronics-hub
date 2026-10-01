@@ -1,0 +1,15 @@
+{
+    "name": "sinjie2008/module-core",
+    "description": "Shared application information and extension contracts.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Modules\\Core\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Core\\Tests\\": "tests/"
+        }
+    }
+}

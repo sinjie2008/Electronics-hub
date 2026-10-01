@@ -1,0 +1,15 @@
+{
+    "name": "System",
+    "alias": "system",
+    "description": "System administration and platform integrations.",
+    "version": "1.0.0",
+    "priority": 20,
+    "requires": [
+        "Core",
+        "IAM"
+    ],
+    "providers": [
+        "Modules\\System\\Providers\\SystemServiceProvider"
+    ],
+    "files": []
+}

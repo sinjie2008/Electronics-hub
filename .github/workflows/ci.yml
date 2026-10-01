@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHP, frontend, and integration checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ENV: testing
+      APP_DEBUG: false
+      APP_URL: http://localhost
+      # These service credentials exist only inside this disposable CI job.
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: boilerplate_testing
+      DB_USERNAME: boilerplate
+      DB_PASSWORD: test-only
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      BCRYPT_ROUNDS: 4
+      TELESCOPE_ENABLED: false
+      RUN_REDIS_INTEGRATION: true
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: boilerplate_testing
+          MYSQL_USER: boilerplate
+          # Disposable service password; never a deployment credential.
+          MYSQL_PASSWORD: test-only
+          MYSQL_ROOT_PASSWORD: root-test-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --user=root --password=root-test-only --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: bcmath, curl, dom, intl, mbstring, pcntl, pdo_mysql, redis, simplexml, sodium, xml, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install MySQL backup and archive tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y mysql-client unzip zip
+
+      - name: Validate Composer files
+        run: composer validate --strict
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Audit locked Composer dependencies
+        run: composer audit
+
+      - name: Install and build frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Prepare disposable test application
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          php artisan passport:keys --force
+
+      - name: Exercise migrations and seeded baseline
+        run: php artisan migrate:fresh --seed --force
+
+      - name: Inspect app, routes, and modules
+        run: |
+          php artisan about --only=environment
+          php artisan route:list --except-vendor
+          php artisan module:list
+
+      - name: Verify framework and Filament caches
+        run: |
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan filament:optimize
+          php artisan optimize:clear
+          php artisan filament:optimize-clear
+
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+
+      - name: Run Larastan
+        run: composer run analyse
+
+      - name: Run Pest feature and integration tests
+        run: php artisan test --compact

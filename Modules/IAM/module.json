@@ -1,0 +1,14 @@
+{
+    "name": "IAM",
+    "alias": "iam",
+    "description": "Identity and permission-based access administration.",
+    "version": "1.0.0",
+    "priority": 10,
+    "requires": [
+        "Core"
+    ],
+    "providers": [
+        "Modules\\IAM\\Providers\\IAMServiceProvider"
+    ],
+    "files": []
+}

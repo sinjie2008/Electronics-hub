@@ -1,0 +1,15 @@
+{
+    "name": "sinjie2008/module-iam",
+    "description": "Identity and permission-based access administration.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Modules\\IAM\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\IAM\\Tests\\": "tests/"
+        }
+    }
+}

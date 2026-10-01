@@ -1,0 +1,15 @@
+{
+    "name": "sinjie2008/module-system",
+    "description": "System administration and platform integrations.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Modules\\System\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\System\\Tests\\": "tests/"
+        }
+    }
+}
