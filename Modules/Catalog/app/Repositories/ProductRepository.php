@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Reads and persists products and their custom field values.
  */
 final class ProductRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Returns products for a set of series in their existing order.
@@ -21,28 +21,25 @@ final class ProductRepository
      */
     public function fetchProductsForSeriesIds(array $seriesIds): array
     {
+        if ($seriesIds === []) {
+            return [];
+        }
+
         $placeholders = implode(',', array_fill(0, count($seriesIds), '?'));
-        $types = str_repeat('i', count($seriesIds));
-        $stmt = $this->connection->prepare(
-            sprintf(
-                'SELECT id, series_id, sku, name, description
-                 FROM product
-                 WHERE series_id IN (%s)
-                 ORDER BY series_id, id',
-                $placeholders
+
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                sprintf(
+                    'SELECT id, series_id, sku, name, description
+                     FROM product
+                     WHERE series_id IN (%s)
+                     ORDER BY series_id, id',
+                    $placeholders
+                ),
+                array_map('intval', $seriesIds)
             )
         );
-        $stmt->bind_param($types, ...$seriesIds);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -50,12 +47,10 @@ final class ProductRepository
      */
     public function updateProduct(string $sku, string $name, ?string $description, int $productId, int $seriesId): void
     {
-        $stmt = $this->connection->prepare(
-            'UPDATE product SET sku = ?, name = ?, description = ? WHERE id = ? AND series_id = ?'
+        $this->connection->update(
+            'UPDATE product SET sku = ?, name = ?, description = ? WHERE id = ? AND series_id = ?',
+            [$sku, $name, $description, $productId, $seriesId]
         );
-        $stmt->bind_param('sssii', $sku, $name, $description, $productId, $seriesId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -63,15 +58,10 @@ final class ProductRepository
      */
     public function insertProduct(int $seriesId, string $sku, string $name, ?string $description): int
     {
-        $stmt = $this->connection->prepare(
-            'INSERT INTO product (series_id, sku, name, description) VALUES (?, ?, ?, ?)'
+        return $this->insertId(
+            'INSERT INTO product (series_id, sku, name, description) VALUES (?, ?, ?, ?)',
+            [$seriesId, $sku, $name, $description]
         );
-        $stmt->bind_param('isss', $seriesId, $sku, $name, $description);
-        $stmt->execute();
-        $productId = (int) $stmt->insert_id;
-        $stmt->close();
-
-        return $productId;
     }
 
     /**
@@ -79,12 +69,7 @@ final class ProductRepository
      */
     public function deleteCustomValues(int $productId): void
     {
-        $stmt = $this->connection->prepare(
-            'DELETE FROM product_custom_field_value WHERE product_id = ?'
-        );
-        $stmt->bind_param('i', $productId);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete('DELETE FROM product_custom_field_value WHERE product_id = ?', [$productId]);
     }
 
     /**
@@ -92,13 +77,10 @@ final class ProductRepository
      */
     public function insertCustomValue(int $productId, int $fieldId, string $value): void
     {
-        $stmt = $this->connection->prepare(
-            'INSERT INTO product_custom_field_value (product_id, series_custom_field_id, value)
-             VALUES (?, ?, ?)'
+        $this->connection->insert(
+            'INSERT INTO product_custom_field_value (product_id, series_custom_field_id, value) VALUES (?, ?, ?)',
+            [$productId, $fieldId, $value]
         );
-        $stmt->bind_param('iis', $productId, $fieldId, $value);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -106,10 +88,7 @@ final class ProductRepository
      */
     public function deleteProduct(int $productId): void
     {
-        $stmt = $this->connection->prepare('DELETE FROM product WHERE id = ? LIMIT 1');
-        $stmt->bind_param('i', $productId);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete('DELETE FROM product WHERE id = ? LIMIT 1', [$productId]);
     }
 
     /**
@@ -119,20 +98,13 @@ final class ProductRepository
      */
     public function fetchProductsForSeries(int $seriesId): array
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id, sku, name, description FROM product WHERE series_id = ? ORDER BY name, id'
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                'SELECT id, sku, name, description FROM product WHERE series_id = ? ORDER BY name, id',
+                [$seriesId]
+            )
         );
-        $stmt->bind_param('i', $seriesId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -142,16 +114,12 @@ final class ProductRepository
      */
     public function findProduct(int $productId): ?array
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id, series_id, sku, name, description FROM product WHERE id = ? LIMIT 1'
+        $row = $this->connection->selectOne(
+            'SELECT id, series_id, sku, name, description FROM product WHERE id = ? LIMIT 1',
+            [$productId]
         );
-        $stmt->bind_param('i', $productId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
 
-        return $row;
+        return $row === null ? null : (array) $row;
     }
 
     /**
@@ -162,27 +130,37 @@ final class ProductRepository
      */
     public function fetchCustomValueRows(array $productIds): array
     {
-        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
-        $types = str_repeat('i', count($productIds));
+        if ($productIds === []) {
+            return [];
+        }
 
-        $stmt = $this->connection->prepare(
-            sprintf(
-                'SELECT product_id, series_custom_field_id, value
-                 FROM product_custom_field_value
-                 WHERE product_id IN (%s)',
-                $placeholders
+        $placeholders = implode(',', array_fill(0, count($productIds), '?'));
+
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                sprintf(
+                    'SELECT product_id, series_custom_field_id, value
+                     FROM product_custom_field_value
+                     WHERE product_id IN (%s)',
+                    $placeholders
+                ),
+                array_map('intval', $productIds)
             )
         );
-        $stmt->bind_param($types, ...$productIds);
-        $stmt->execute();
-        $result = $stmt->get_result();
+    }
 
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->connection->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
         }
-        $stmt->close();
 
-        return $rows;
+        return (int) $this->connection->getPdo()->lastInsertId();
     }
 }

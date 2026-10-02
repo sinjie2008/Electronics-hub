@@ -4,29 +4,22 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Support\Config;
-use mysqli;
 
 /**
  * Performs catalog row counts, truncation statements, and advisory lock queries.
  */
 final class CatalogTruncateRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Counts category or series nodes by their type.
      */
     public function countCategoriesByType(string $type): int
     {
-        $stmt = $this->connection->prepare('SELECT COUNT(1) AS total FROM category WHERE type = ?');
-        $stmt->bind_param('s', $type);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_assoc()['total'] ?? 0);
-        $stmt->close();
-
-        return $count;
+        return (int) $this->connection->scalar('SELECT COUNT(1) AS total FROM category WHERE type = ?', [$type]);
     }
 
     /**
@@ -67,7 +60,7 @@ final class CatalogTruncateRepository
     public function setForeignKeyChecks(bool $enabled): void
     {
         $value = $enabled ? 1 : 0;
-        $this->connection->query(sprintf('SET FOREIGN_KEY_CHECKS = %d', $value));
+        $this->connection->statement(sprintf('SET FOREIGN_KEY_CHECKS = %d', $value));
     }
 
     /**
@@ -83,7 +76,7 @@ final class CatalogTruncateRepository
             'category',
             'seed_migration',
         ] as $table) {
-            $this->connection->query(sprintf('TRUNCATE TABLE %s', $table));
+            $this->connection->statement(sprintf('TRUNCATE TABLE %s', $table));
         }
     }
 
@@ -92,15 +85,10 @@ final class CatalogTruncateRepository
      */
     public function acquireTruncateLock(): bool
     {
-        $stmt = $this->connection->prepare('SELECT GET_LOCK(?, 0) AS lock_obtained');
         $lockKey = Config::get('app')['truncate']['lock_key'];
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
+        $row = $this->connection->selectOne('SELECT GET_LOCK(?, 0) AS lock_obtained', [$lockKey]);
 
-        return (int) ($row['lock_obtained'] ?? 0) === 1;
+        return (int) ($row->lock_obtained ?? 0) === 1;
     }
 
     /**
@@ -108,11 +96,8 @@ final class CatalogTruncateRepository
      */
     public function releaseTruncateLock(): void
     {
-        $stmt = $this->connection->prepare('SELECT RELEASE_LOCK(?) AS released');
         $lockKey = Config::get('app')['truncate']['lock_key'];
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->selectOne('SELECT RELEASE_LOCK(?) AS released', [$lockKey]);
     }
 
     /**
@@ -120,12 +105,6 @@ final class CatalogTruncateRepository
      */
     private function countTableRows(string $table): int
     {
-        $stmt = $this->connection->prepare(sprintf('SELECT COUNT(1) AS total FROM %s', $table));
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_assoc()['total'] ?? 0);
-        $stmt->close();
-
-        return $count;
+        return (int) $this->connection->scalar(sprintf('SELECT COUNT(1) AS total FROM %s', $table));
     }
 }

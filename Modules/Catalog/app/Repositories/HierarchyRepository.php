@@ -4,26 +4,24 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Persists category and series hierarchy data.
  */
 final class HierarchyRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Updates an existing category or series node.
      */
     public function updateNode(?int $parentId, string $name, string $type, int $displayOrder, int $nodeId): void
     {
-        $stmt = $this->connection->prepare(
-            'UPDATE category SET parent_id = ?, name = ?, type = ?, display_order = ? WHERE id = ?'
+        $this->connection->update(
+            'UPDATE category SET parent_id = ?, name = ?, type = ?, display_order = ? WHERE id = ?',
+            [$parentId, $name, $type, $displayOrder, $nodeId]
         );
-        $stmt->bind_param('issii', $parentId, $name, $type, $displayOrder, $nodeId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -31,14 +29,7 @@ final class HierarchyRepository
      */
     public function countChildren(int $nodeId): int
     {
-        $stmt = $this->connection->prepare('SELECT COUNT(1) FROM category WHERE parent_id = ?');
-        $stmt->bind_param('i', $nodeId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_row()[0] ?? 0);
-        $stmt->close();
-
-        return $count;
+        return (int) $this->connection->scalar('SELECT COUNT(1) FROM category WHERE parent_id = ?', [$nodeId]);
     }
 
     /**
@@ -46,10 +37,7 @@ final class HierarchyRepository
      */
     public function deleteNode(int $nodeId): void
     {
-        $stmt = $this->connection->prepare('DELETE FROM category WHERE id = ? LIMIT 1');
-        $stmt->bind_param('i', $nodeId);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete('DELETE FROM category WHERE id = ? LIMIT 1', [$nodeId]);
     }
 
     /**
@@ -59,17 +47,13 @@ final class HierarchyRepository
      */
     public function fetchHierarchyRows(bool $includeLegacy): array
     {
-        $result = $this->connection->query(sprintf(
-            'SELECT %s FROM category ORDER BY display_order, id',
-            self::getCategorySelectColumns($includeLegacy)
-        ));
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(sprintf(
+                'SELECT %s FROM category ORDER BY display_order, id',
+                self::getCategorySelectColumns($includeLegacy)
+            ))
+        );
     }
 
     /**
@@ -79,16 +63,10 @@ final class HierarchyRepository
      */
     public function fetchSeriesOptionRows(): array
     {
-        $result = $this->connection->query(
-            "SELECT id, name FROM category WHERE type = 'series' ORDER BY name, id"
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select("SELECT id, name FROM category WHERE type = 'series' ORDER BY name, id")
         );
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-
-        return $rows;
     }
 
     /**
@@ -98,19 +76,12 @@ final class HierarchyRepository
      */
     public function findNode(int $nodeId, bool $includeLegacy): ?array
     {
-        $stmt = $this->connection->prepare(
-            sprintf(
-                'SELECT %s FROM category WHERE id = ? LIMIT 1',
-                self::getCategorySelectColumns($includeLegacy)
-            )
+        $row = $this->connection->selectOne(
+            sprintf('SELECT %s FROM category WHERE id = ? LIMIT 1', self::getCategorySelectColumns($includeLegacy)),
+            [$nodeId]
         );
-        $stmt->bind_param('i', $nodeId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc() ?: null;
-        $stmt->close();
 
-        return $row;
+        return $row === null ? null : (array) $row;
     }
 
     /**
@@ -138,14 +109,7 @@ final class HierarchyRepository
      */
     public function countProductsForSeries(int $seriesId): int
     {
-        $stmt = $this->connection->prepare('SELECT COUNT(1) FROM product WHERE series_id = ?');
-        $stmt->bind_param('i', $seriesId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_row()[0] ?? 0);
-        $stmt->close();
-
-        return $count;
+        return (int) $this->connection->scalar('SELECT COUNT(1) FROM product WHERE series_id = ?', [$seriesId]);
     }
 
     /**
@@ -153,15 +117,10 @@ final class HierarchyRepository
      */
     public function insertNode(?int $parentId, string $name, string $type, int $displayOrder): int
     {
-        $stmt = $this->connection->prepare(
-            'INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, ?, ?)'
+        return $this->insertId(
+            'INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, ?, ?)',
+            [$parentId, $name, $type, $displayOrder]
         );
-        $stmt->bind_param('issi', $parentId, $name, $type, $displayOrder);
-        $stmt->execute();
-        $newId = (int) $stmt->insert_id;
-        $stmt->close();
-
-        return $newId;
     }
 
     /**
@@ -170,18 +129,16 @@ final class HierarchyRepository
     public function updateTemplatingEnabled(int $seriesId, int $flag, bool $hasLegacyColumn): void
     {
         if ($hasLegacyColumn) {
-            $stmt = $this->connection->prepare(
-                "UPDATE category SET typst_templating_enabled = ?, latex_templating_enabled = ? WHERE id = ? AND type = 'series'"
+            $this->connection->update(
+                "UPDATE category SET typst_templating_enabled = ?, latex_templating_enabled = ? WHERE id = ? AND type = 'series'",
+                [$flag, $flag, $seriesId]
             );
-            $stmt->bind_param('iii', $flag, $flag, $seriesId);
         } else {
-            $stmt = $this->connection->prepare(
-                "UPDATE category SET typst_templating_enabled = ? WHERE id = ? AND type = 'series'"
+            $this->connection->update(
+                "UPDATE category SET typst_templating_enabled = ? WHERE id = ? AND type = 'series'",
+                [$flag, $seriesId]
             );
-            $stmt->bind_param('ii', $flag, $seriesId);
         }
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -189,16 +146,23 @@ final class HierarchyRepository
      */
     public function hasCategoryColumn(string $column): bool
     {
-        $stmt = $this->connection->prepare(
-            'SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
-        );
-        $table = 'category';
-        $stmt->bind_param('ss', $table, $column);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_row()[0] ?? 0);
-        $stmt->close();
+        return (int) $this->connection->scalar(
+            'SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            ['category', $column]
+        ) > 0;
+    }
 
-        return $count > 0;
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->connection->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
+        }
+
+        return (int) $this->connection->getPdo()->lastInsertId();
     }
 }

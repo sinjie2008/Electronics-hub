@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Repositories\LatexRepository;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
-use mysqli;
 use RuntimeException;
 
 /**
@@ -30,7 +30,7 @@ final class LatexService
     /**
      * Create the service with injectable persistence.
      */
-    public function __construct(?mysqli $db = null, ?LatexRepository $latex = null, ?CatalogService $catalog = null)
+    public function __construct(?Connection $db = null, ?LatexRepository $latex = null, ?CatalogService $catalog = null)
     {
         $connection = $db ?? Db::connection();
         $this->latex = $latex ?? new LatexRepository($connection);
@@ -50,7 +50,11 @@ final class LatexService
             '/\\'
         );
         $latexConfig = (array) ($config['latex'] ?? []);
-        $this->pdflatexBinary = (string) ($latexConfig['default_binary'] ?? 'pdflatex');
+        $binaryEnvironment = (string) ($latexConfig['pdflatex_env'] ?? 'CATALOG_PDFLATEX_BIN');
+        $configuredBinary = getenv($binaryEnvironment);
+        $this->pdflatexBinary = is_string($configuredBinary) && $configuredBinary !== ''
+            ? $configuredBinary
+            : (string) ($latexConfig['default_binary'] ?? 'pdflatex');
         $this->pdfUrlPrefix = rtrim((string) ($latexConfig['pdf_url_prefix'] ?? '/storage/latex-pdfs'), '/');
     }
 

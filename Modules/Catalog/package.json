@@ -1,12 +1,11 @@
 {
-  "name": "catalog-module-assets",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "node scripts/build-assets.mjs",
-    "build:assets": "node scripts/build-assets.mjs"
-  },
-  "devDependencies": {
-    "sass": "1.105.1"
-  }
+    "name": "electronics-hub-catalog-assets",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "node scripts/build-assets.mjs"
+    },
+    "engines": {
+        "node": ">=24 <25"
+    }
 }

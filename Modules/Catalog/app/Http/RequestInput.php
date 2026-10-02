@@ -107,6 +107,7 @@ final class RequestInput
             'tmp_name' => $file->getPathname(),
             'error' => $file->getError(),
             'size' => $file->getError() === UPLOAD_ERR_OK ? $file->getSize() : 0,
+            'uploaded_file' => $file,
         ];
     }
 }

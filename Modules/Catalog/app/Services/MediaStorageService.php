@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Repositories\MediaStorageRepository;
 use Modules\Catalog\Support\Config;
-use mysqli;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class MediaStorageService
@@ -24,7 +24,7 @@ final class MediaStorageService
     private MediaStorageRepository $repository;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         ?string $rootDir = null,
         ?int $maxBytes = null,
         ?array $allowedMime = null,

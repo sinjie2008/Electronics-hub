@@ -1,4 +1,6 @@
-# Electronics Hub 集成验证报告
+# Electronics Hub 历史集成验证报告
+
+> 此报告记录旧 Filament Catalog 实现的集成结果，对应 commit `7f55314392d6db53db170e2e41a64f7e6e2229c3`。该实现已被保留源项目界面的 Catalog 迁移替代；当前功能、安装与验证命令以 [README](../README.md) 和 [Catalog module guide](../Modules/Catalog/README.md) 为准。以下结果保留为历史记录，不描述当前代码或数据库状态。
 
 验证日期：2026-10-01。完成标准是已执行检查通过、没有已知集成回归；不宣称绝对没有 bugs。
 
@@ -18,7 +20,7 @@
 - 领域服务继续通过 scoped MySQLi 写入；Filament 的 Eloquent models 仅作正确连接上的读取投影。没有用 PDO transaction 假装包住另一个 MySQLi connection。
 - root Vite 与 Catalog Sass/JS 分别构建。Catalog JS 输出统一 LF，避免 Windows 与 Linux 的 manifest hash 不一致。
 
-安装、升级、文件功能和备份范围见 [Catalog operations](catalog.md)。
+历史安装、升级、文件功能和备份范围见 [Catalog operations](https://github.com/sinjie2008/Electronics-hub/blob/7f55314392d6db53db170e2e41a64f7e6e2229c3/docs/catalog.md)。
 
 ## 3. Filament Implementation
 
@@ -140,7 +142,7 @@ Pint 检查 233 个 files；PHPStan 检查 178 个 files，无 errors。MySQL/Re
 
 未实测实际 WordPress deployment、Octane/Swoole 或生产 SMTP/外部 AI providers。它们不属于本次实际 runtime 验证范围；AI tests 按要求使用 fakes。Windows 原生 PHP 8.3 不能运行这个 PHP 8.4.1+ 项目；验证在 Linux/WSL 完成。
 
-Filament 的 file attributes 只读，上传仍由原 UI/API 负责。宿主 backup defaults 保持宿主数据库和 `storage/app/private` 的原范围；Catalog 独立数据库/storage 的部署备份应按 [Catalog operations](catalog.md) 显式配置并验证。本次 backup PASS 指原宿主备份回归，并不声称默认 archive 包含 Catalog。
+Filament 的 file attributes 只读，上传仍由原 UI/API 负责。宿主 backup defaults 保持宿主数据库和 `storage/app/private` 的原范围；Catalog 独立数据库/storage 的部署备份应按 [Catalog operations](https://github.com/sinjie2008/Electronics-hub/blob/7f55314392d6db53db170e2e41a64f7e6e2229c3/docs/catalog.md) 显式配置并验证。本次 backup PASS 指原宿主备份回归，并不声称默认 archive 包含 Catalog。
 
 ## 10. Jev Usage
 

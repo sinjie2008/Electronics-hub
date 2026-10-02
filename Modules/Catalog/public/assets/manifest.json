@@ -9,6 +9,7 @@
   "js/app_loading.js": "8a38ebffe31f0861",
   "js/catalog_csv.js": "e0be999b993c371d",
   "js/catalog_ui.js": "cba649450db3d3ca",
+  "js/catalog-csrf-bridge.js": "991c75ae2ed046b6",
   "js/global-typst-templating.js": "e40108fa879e88a7",
   "js/latex-templating.js": "a7b6d0eadeaebd65",
   "js/mathjax-config.js": "8c33fb2d5741606e",

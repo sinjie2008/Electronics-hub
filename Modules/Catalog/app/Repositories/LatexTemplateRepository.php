@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Persists and reads LaTeX template records.
  */
 final class LatexTemplateRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Returns all templates in their existing display order.
@@ -20,21 +20,14 @@ final class LatexTemplateRepository
      */
     public function fetchTemplates(): array
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id, title, description, pdf_path, created_at, updated_at
-             FROM latex_template
-             ORDER BY updated_at DESC, id DESC'
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                'SELECT id, title, description, pdf_path, created_at, updated_at
+                 FROM latex_template
+                 ORDER BY updated_at DESC, id DESC'
+            )
         );
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -42,16 +35,11 @@ final class LatexTemplateRepository
      */
     public function insertTemplate(string $title, string $description, string $latex): int
     {
-        $stmt = $this->connection->prepare(
+        return $this->insertId(
             'INSERT INTO latex_template (title, description, latex_source, created_at, updated_at)
-             VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)'
+             VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+            [$title, $description, $latex]
         );
-        $stmt->bind_param('sss', $title, $description, $latex);
-        $stmt->execute();
-        $templateId = (int) $this->connection->insert_id;
-        $stmt->close();
-
-        return $templateId;
     }
 
     /**
@@ -59,14 +47,12 @@ final class LatexTemplateRepository
      */
     public function updateTemplate(int $templateId, string $title, string $description, string $latex): void
     {
-        $stmt = $this->connection->prepare(
+        $this->connection->update(
             'UPDATE latex_template
              SET title = ?, description = ?, latex_source = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? LIMIT 1'
+             WHERE id = ? LIMIT 1',
+            [$title, $description, $latex, $templateId]
         );
-        $stmt->bind_param('sssi', $title, $description, $latex, $templateId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -74,10 +60,7 @@ final class LatexTemplateRepository
      */
     public function deleteTemplate(int $templateId): void
     {
-        $stmt = $this->connection->prepare('DELETE FROM latex_template WHERE id = ? LIMIT 1');
-        $stmt->bind_param('i', $templateId);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete('DELETE FROM latex_template WHERE id = ? LIMIT 1', [$templateId]);
     }
 
     /**
@@ -85,14 +68,12 @@ final class LatexTemplateRepository
      */
     public function updatePdfPath(int $templateId, string $relativePath): void
     {
-        $stmt = $this->connection->prepare(
+        $this->connection->update(
             'UPDATE latex_template
              SET pdf_path = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? LIMIT 1'
+             WHERE id = ? LIMIT 1',
+            [$relativePath, $templateId]
         );
-        $stmt->bind_param('si', $relativePath, $templateId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -102,17 +83,27 @@ final class LatexTemplateRepository
      */
     public function findTemplate(int $templateId): ?array
     {
-        $stmt = $this->connection->prepare(
+        $row = $this->connection->selectOne(
             'SELECT id, title, description, latex_source, pdf_path, created_at, updated_at
              FROM latex_template
-             WHERE id = ? LIMIT 1'
+             WHERE id = ? LIMIT 1',
+            [$templateId]
         );
-        $stmt->bind_param('i', $templateId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc() ?: null;
-        $stmt->close();
 
-        return $row;
+        return $row === null ? null : (array) $row;
+    }
+
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->connection->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
+        }
+
+        return (int) $this->connection->getPdo()->lastInsertId();
     }
 }

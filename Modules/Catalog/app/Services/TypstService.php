@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Repositories\TypstRepository;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
-use mysqli;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Service for managing Typst templates and global variables.
  */
 final class TypstService
 {
-    private mysqli $db;
+    private Connection $db;
 
     private TypstRepository $typst;
 
@@ -38,7 +40,7 @@ final class TypstService
     /** @var array<string, string> */
     private array $copiedAssets = [];
 
-    public function __construct(?mysqli $db = null)
+    public function __construct(?Connection $db = null)
     {
         $this->db = $db ?? Db::connection();
         $config = Config::get('app');
@@ -568,9 +570,9 @@ final class TypstService
         $projectRoot = realpath($this->projectRoot) ?: $this->projectRoot;
         $publicRoot = realpath($this->publicRoot) ?: $this->publicRoot;
         $candidates = [];
-        $storageAsset = $this->storageAssetLocation($normalized);
-        if ($storageAsset !== null) {
-            $candidates[] = $storageAsset['path'];
+        $storedAsset = $this->resolveStoredTypstAsset($normalized);
+        if ($storedAsset !== null) {
+            $candidates[] = $storedAsset['absolutePath'];
         }
 
         // Absolute path as-is
@@ -602,12 +604,11 @@ final class TypstService
                 $destPath = $buildDir.'/'.$relativePath;
                 $destDir = dirname($destPath);
                 if (! is_dir($destDir)) {
-                    @mkdir($destDir, 0777, true);
+                    mkdir($destDir, 0777, true);
                 }
                 if (! is_file($destPath)) {
                     $base64Png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-                    // The legacy placeholder is best effort, including text values that cannot be filenames.
-                    @file_put_contents($destPath, base64_decode($base64Png));
+                    file_put_contents($destPath, base64_decode($base64Png));
                 }
 
                 return $relativePath;
@@ -645,7 +646,8 @@ final class TypstService
         }
 
         $tmpPath = (string) ($fileUpload['tmp_name'] ?? '');
-        if ($tmpPath === '' || ! is_uploaded_file($tmpPath)) {
+        $upload = $fileUpload['uploaded_file'] ?? null;
+        if ($tmpPath === '' || ($upload instanceof UploadedFile ? ! $upload->isValid() : ! is_uploaded_file($tmpPath))) {
             throw new RuntimeException('Invalid upload payload.');
         }
 
@@ -666,7 +668,13 @@ final class TypstService
         }
 
         $destination = $this->assetStorageDir.'/'.$filename;
-        if (! move_uploaded_file($tmpPath, $destination)) {
+        if ($upload instanceof UploadedFile) {
+            try {
+                $upload->move(dirname($destination), basename($destination));
+            } catch (FileException $exception) {
+                throw new RuntimeException('Failed to store uploaded asset.', 0, $exception);
+            }
+        } elseif (! move_uploaded_file($tmpPath, $destination)) {
             throw new RuntimeException('Failed to store uploaded asset.');
         }
 
@@ -845,6 +853,31 @@ final class TypstService
     }
 
     /**
+     * @return array{absolutePath: string, relativePath: string}|null
+     */
+    private function resolveStoredTypstAsset(string $value): ?array
+    {
+        $relativePath = ltrim(str_replace('\\', '/', $value), '/');
+        if (str_starts_with($relativePath, 'storage/')) {
+            $relativePath = substr($relativePath, strlen('storage/'));
+        }
+        if (! str_starts_with($relativePath, 'typst-assets/')) {
+            return null;
+        }
+
+        $root = realpath($this->assetStorageDir);
+        $file = realpath($this->assetStorageDir.'/'.substr($relativePath, strlen('typst-assets/')));
+        if ($root === false || $file === false || ! is_file($file) || ! str_starts_with($file, $root.DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
+        return [
+            'absolutePath' => $file,
+            'relativePath' => str_replace('\\', '/', substr($file, strlen($root) + 1)),
+        ];
+    }
+
+    /**
      * Attempt to convert a stored file/image path into a web-accessible URL or data URI for previews.
      *
      * @return array{url: string|null, dataUri: string|null}
@@ -861,10 +894,14 @@ final class TypstService
         }
 
         $normalized = str_replace('\\', '/', $value);
-        $storageAsset = $this->storageAssetLocation($normalized);
-        if ($storageAsset !== null) {
-            return ['url' => $storageAsset['url'], 'dataUri' => null];
+        $storedAsset = $this->resolveStoredTypstAsset($normalized);
+        if ($storedAsset !== null) {
+            $baseUrl = rtrim((string) (Config::get('app')['base_url'] ?? ''), '/');
+            $encodedPath = implode('/', array_map('rawurlencode', explode('/', $storedAsset['relativePath'])));
+
+            return ['url' => $baseUrl.'/storage/typst-assets/'.$encodedPath, 'dataUri' => null];
         }
+
         $projectRoot = realpath($this->projectRoot) ?: $this->projectRoot;
         $publicRoot = realpath($this->publicRoot) ?: $this->publicRoot;
 
@@ -909,40 +946,6 @@ final class TypstService
         $fallback = ltrim($normalized, '/');
 
         return ['url' => $fallback === '' ? null : $fallback, 'dataUri' => null];
-    }
-
-    /** Resolve stored relative paths through the host's configured storage roots. */
-    private function storageAssetLocation(string $value): ?array
-    {
-        $baseUrl = rtrim((string) (Config::get('app')['base_url'] ?? ''), '/');
-        foreach ([
-            ['typst-assets', $this->assetStorageDir, ['typst-assets/', 'storage/typst-assets/']],
-            ['media', $this->mediaStorageDir, ['media/', 'storage/media/', '../storage/media/']],
-        ] as [$kind, $directory, $legacyPrefixes]) {
-            $urlPrefix = ($baseUrl === '' ? '' : $baseUrl.'/').'storage/'.$kind.'/';
-            $prefixes = [$urlPrefix, ...$legacyPrefixes];
-            $suffix = null;
-            foreach ($prefixes as $prefix) {
-                if (str_starts_with($value, $prefix)) {
-                    $suffix = substr($value, strlen($prefix));
-                    break;
-                }
-            }
-            $root = realpath($directory);
-            $file = realpath($suffix === null ? $value : $directory.'/'.$suffix);
-            if ($root === false || $file === false || ! is_file($file)) {
-                continue;
-            }
-            $root = str_replace('\\', '/', $root);
-            $file = str_replace('\\', '/', $file);
-            if (! str_starts_with($file, $root.'/')) {
-                continue;
-            }
-
-            return ['path' => $file, 'url' => $urlPrefix.substr($file, strlen($root) + 1)];
-        }
-
-        return null;
     }
 
     /**

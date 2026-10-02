@@ -134,6 +134,10 @@ final class SpecSearchController
             'status' => 200,
             'durationMs' => (int) round((microtime(true) - $startedAt) * 1000),
         ];
+        if ($name === 'spec-search.products') {
+            $data = json_decode((string) $response->getContent(), true);
+            $context['itemCount'] = (int) ($data['data']['total'] ?? 0);
+        }
         Logger::info('request_success', $context, $correlationId);
 
         return $response;

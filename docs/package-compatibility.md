@@ -1,6 +1,6 @@
 # Package compatibility
 
-This matrix describes the committed root `composer.lock`, host `package-lock.json`, and Catalog asset `Modules/Catalog/package-lock.json`. Composer constraints are taken from the locked release metadata and cross-checked against the corresponding Packagist package page; documentation links point to the upstream project documentation for the installed major version. Catalog's `composer.json` is merged into the root package through the existing merge plugin and has no separate Composer lock file. Lock files, rather than a copied version list, remain the install source of truth.
+This matrix describes the committed `composer.lock` and `package-lock.json`. Composer constraints are taken from the locked release metadata and cross-checked against the corresponding Packagist package page; documentation links point to the upstream project documentation for the installed major version. Lock files, rather than a copied version list, remain the install source of truth.
 
 ## Installed compatibility matrix
 
@@ -62,13 +62,13 @@ The effective PHP floor is **8.4.1**. The root project declares `^8.4.1`, Activi
 | [`laravel/boost`](https://packagist.org/packages/laravel/boost) | 2.10.0 | PHP `^8.2`; Laravel components 11.45.3+, 12.41.1+, or 13. It is a development dependency. | [Laravel Boost](https://laravel.com/framework/docs/13.x/boost) |
 | [`laravel/telescope`](https://packagist.org/packages/laravel/telescope) | 5.25.0 | PHP `^8.0`; supports Laravel 8.37 through 13. It is a development dependency. | [Laravel Telescope](https://laravel.com/framework/docs/13.x/telescope) |
 
-The host frontend is locked by `package-lock.json`; [`package.json`](../package.json) requires Node `>=24 <25`. Build with `npm ci` followed by `npm run build`. Catalog assets use a separate package lock and Sass 1.105.1; run `npm ci` and `npm run build:assets` from `Modules/Catalog/` so its compiled CSS, JavaScript, and content-hash manifest stay aligned with module sources.
+The frontend is locked by `package-lock.json`; [`package.json`](../package.json) requires Node `>=24 <25`. Build with `npm ci` followed by `npm run build`.
 
 Laravel Boost's testing guidance is generic and some published examples target earlier Pest majors. This application locks Pest 5.2.1; verify test APIs against the installed Pest 5 documentation rather than copying Pest 3/4-specific examples.
 
 ## Runtime services and extensions
 
-PHP extensions explicitly required by the root Composer manifest are DOM, fileinfo, JSON, mbstring, MySQLi, PDO, PDO MySQL, Redis, SimpleXML, and ZIP. Catalog uses both Laravel's PDO connection for its migration and MySQLi for its existing SQL workflows. The application targets MySQL 8+ and Redis 7+ in its deployment environment; these server versions are operational requirements rather than Composer package constraints. CI also installs `intl`, `bcmath`, `pcntl`, `curl`, Sodium, and XML extensions used by the build and integration checks.
+PHP extensions explicitly required by the root Composer manifest are DOM, JSON, mbstring, PDO, Redis, SimpleXML, and ZIP. The application targets MySQL 8+ and Redis 7+ in its deployment environment; these server versions are operational requirements rather than Composer package constraints. CI also installs the MySQL PDO driver, `intl`, `bcmath`, `pcntl`, `curl`, Sodium, and XML extensions used by the build and integration checks.
 
 ## Adding or upgrading packages
 

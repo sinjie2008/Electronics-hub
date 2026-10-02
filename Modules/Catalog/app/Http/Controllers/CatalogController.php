@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Http\Controllers;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Http\HttpRequestReader;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Http\RequestInput;
+use Modules\Catalog\Services\CatalogBootstrapService;
 use Modules\Catalog\Services\CatalogCsvService;
 use Modules\Catalog\Services\CatalogTruncateService;
 use Modules\Catalog\Services\HierarchyService;
@@ -20,7 +22,6 @@ use Modules\Catalog\Services\PublicCatalogService;
 use Modules\Catalog\Services\SeriesAttributeService;
 use Modules\Catalog\Services\SeriesFieldService;
 use Modules\Catalog\Support\Logger;
-use mysqli;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
@@ -28,7 +29,7 @@ final class CatalogController
 {
     public function __construct(
         private RequestInput $input,
-        private mysqli $connection,
+        private Connection $connection,
         private HttpResponder $responder,
         private HttpRequestReader $requestReader,
         private MediaStorageService $mediaStorageService,
@@ -41,12 +42,14 @@ final class CatalogController
         private PublicCatalogService $publicCatalogService,
         private SpecSearchService $specSearchService,
         private LatexTemplateService $latexTemplateService,
-        private LatexBuildService $latexBuildService
+        private LatexBuildService $latexBuildService,
+        private CatalogBootstrapService $bootstrapService
     ) {}
 
     /** Handle the legacy action using native Laravel input and responses. */
     public function run(): HttpResponse
     {
+        $this->bootstrap();
         $action = (string) $this->input->query('action', '');
         if ($action === '') {
             return $this->responder->sendError('ACTION_REQUIRED', 'The action query parameter is required.', 400);
@@ -100,7 +103,12 @@ final class CatalogController
         return $response;
     }
 
-    public function getConnection(): mysqli
+    public function bootstrap(): void
+    {
+        $this->bootstrapService->bootstrap();
+    }
+
+    public function getConnection(): Connection
     {
         return $this->connection;
     }

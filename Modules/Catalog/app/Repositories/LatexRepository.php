@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Stores LaTeX templates and variables and reads series data for compilation.
  */
 final class LatexRepository
 {
-    private mysqli $db;
+    private Connection $db;
 
     /**
      * Create the repository with the application's database connection.
      */
-    public function __construct(mysqli $db)
+    public function __construct(Connection $db)
     {
         $this->db = $db;
     }
@@ -45,7 +45,6 @@ final class LatexRepository
         return $this->findOne(
             'SELECT id, title, description, latex_code, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM latex_templates WHERE id = ? AND is_global = 1 LIMIT 1',
-            'i',
             [$id]
         );
     }
@@ -55,15 +54,10 @@ final class LatexRepository
      */
     public function insertGlobalTemplate(string $title, string $description, string $latexCode): int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO latex_templates (title, description, latex_code, is_global, series_id) VALUES (?, ?, ?, 1, NULL)'
+        return $this->insertId(
+            'INSERT INTO latex_templates (title, description, latex_code, is_global, series_id) VALUES (?, ?, ?, 1, NULL)',
+            [$title, $description, $latexCode]
         );
-        $stmt->bind_param('sss', $title, $description, $latexCode);
-        $stmt->execute();
-        $id = (int) $this->db->insert_id;
-        $stmt->close();
-
-        return $id;
     }
 
     /**
@@ -71,13 +65,11 @@ final class LatexRepository
      */
     public function updateGlobalTemplate(int $id, string $title, string $description, string $latexCode): void
     {
-        $stmt = $this->db->prepare(
+        $this->db->update(
             'UPDATE latex_templates SET title = ?, description = ?, latex_code = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND is_global = 1'
+             WHERE id = ? AND is_global = 1',
+            [$title, $description, $latexCode, $id]
         );
-        $stmt->bind_param('sssi', $title, $description, $latexCode, $id);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -85,7 +77,7 @@ final class LatexRepository
      */
     public function deleteGlobalTemplate(int $id): bool
     {
-        return $this->execute('DELETE FROM latex_templates WHERE id = ? AND is_global = 1 LIMIT 1', 'i', [$id]);
+        return $this->execute('DELETE FROM latex_templates WHERE id = ? AND is_global = 1 LIMIT 1', [$id]);
     }
 
     /**
@@ -99,7 +91,6 @@ final class LatexRepository
             'SELECT id, title, description, latex_code, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM latex_templates WHERE series_id = ? OR (is_global = 1 AND (series_id IS NULL OR series_id = 0))
              ORDER BY is_global DESC, updated_at DESC',
-            'i',
             [$seriesId]
         );
     }
@@ -114,7 +105,6 @@ final class LatexRepository
         return $this->findOne(
             'SELECT id, title, description, latex_code, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM latex_templates WHERE id = ? LIMIT 1',
-            'i',
             [$id]
         );
     }
@@ -124,15 +114,10 @@ final class LatexRepository
      */
     public function insertSeriesTemplate(int $seriesId, string $title, string $description, string $latexCode): int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO latex_templates (title, description, latex_code, is_global, series_id) VALUES (?, ?, ?, 0, ?)'
+        return $this->insertId(
+            'INSERT INTO latex_templates (title, description, latex_code, is_global, series_id) VALUES (?, ?, ?, 0, ?)',
+            [$title, $description, $latexCode, $seriesId]
         );
-        $stmt->bind_param('sssi', $title, $description, $latexCode, $seriesId);
-        $stmt->execute();
-        $id = (int) $this->db->insert_id;
-        $stmt->close();
-
-        return $id;
     }
 
     /**
@@ -140,13 +125,11 @@ final class LatexRepository
      */
     public function updateSeriesTemplate(int $id, int $seriesId, string $title, string $description, string $latexCode): void
     {
-        $stmt = $this->db->prepare(
+        $this->db->update(
             'UPDATE latex_templates SET title = ?, description = ?, latex_code = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND series_id = ?'
+             WHERE id = ? AND series_id = ?',
+            [$title, $description, $latexCode, $id, $seriesId]
         );
-        $stmt->bind_param('sssii', $title, $description, $latexCode, $id, $seriesId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -156,7 +139,7 @@ final class LatexRepository
      */
     public function getSeriesProducts(int $seriesId): array
     {
-        return $this->fetchAll('SELECT id, name, sku FROM product WHERE series_id = ? ORDER BY sku ASC', 'i', [$seriesId]);
+        return $this->fetchAll('SELECT id, name, sku FROM product WHERE series_id = ? ORDER BY sku ASC', [$seriesId]);
     }
 
     /**
@@ -169,7 +152,6 @@ final class LatexRepository
         return $this->fetchAll(
             'SELECT f.field_key, v.value FROM product_custom_field_value v
              JOIN series_custom_field f ON v.series_custom_field_id = f.id WHERE v.product_id = ?',
-            'i',
             [$productId]
         );
     }
@@ -192,13 +174,11 @@ final class LatexRepository
      */
     public function updateGlobalVariable(int $id, string $key, string $type, string $value): void
     {
-        $stmt = $this->db->prepare(
+        $this->db->update(
             'UPDATE latex_variables SET field_key = ?, field_type = ?, field_value = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND is_global = 1'
+             WHERE id = ? AND is_global = 1',
+            [$key, $type, $value, $id]
         );
-        $stmt->bind_param('sssi', $key, $type, $value, $id);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -206,15 +186,10 @@ final class LatexRepository
      */
     public function insertGlobalVariable(string $key, string $type, string $value): int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO latex_variables (field_key, field_type, field_value, is_global, series_id) VALUES (?, ?, ?, 1, NULL)'
+        return $this->insertId(
+            'INSERT INTO latex_variables (field_key, field_type, field_value, is_global, series_id) VALUES (?, ?, ?, 1, NULL)',
+            [$key, $type, $value]
         );
-        $stmt->bind_param('sss', $key, $type, $value);
-        $stmt->execute();
-        $id = (int) $this->db->insert_id;
-        $stmt->close();
-
-        return $id;
     }
 
     /**
@@ -222,7 +197,7 @@ final class LatexRepository
      */
     public function deleteGlobalVariable(int $id): bool
     {
-        return $this->execute('DELETE FROM latex_variables WHERE id = ? AND is_global = 1 LIMIT 1', 'i', [$id]);
+        return $this->execute('DELETE FROM latex_variables WHERE id = ? AND is_global = 1 LIMIT 1', [$id]);
     }
 
     /**
@@ -235,7 +210,6 @@ final class LatexRepository
         return $this->findOne(
             'SELECT id, field_key, field_type, field_value, is_global, series_id, created_at, updated_at
              FROM latex_variables WHERE id = ? AND is_global = 1 LIMIT 1',
-            'i',
             [$id]
         );
     }
@@ -246,17 +220,12 @@ final class LatexRepository
      * @param  list<mixed>  $params
      * @return list<array<string, mixed>>
      */
-    private function fetchAll(string $sql, string $types = '', array $params = []): array
+    private function fetchAll(string $sql, array $params = []): array
     {
-        $stmt = $this->db->prepare($sql);
-        if ($params !== []) {
-            $stmt->bind_param($types, ...$params);
-        }
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select($sql, $params)
+        );
     }
 
     /**
@@ -265,15 +234,11 @@ final class LatexRepository
      * @param  list<mixed>  $params
      * @return array<string, mixed>|null
      */
-    private function findOne(string $sql, string $types, array $params): ?array
+    private function findOne(string $sql, array $params): ?array
     {
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc() ?: null;
-        $stmt->close();
+        $row = $this->db->selectOne($sql, $params);
 
-        return $row;
+        return $row === null ? null : (array) $row;
     }
 
     /**
@@ -281,13 +246,22 @@ final class LatexRepository
      *
      * @param  list<mixed>  $params
      */
-    private function execute(string $sql, string $types, array $params): bool
+    private function execute(string $sql, array $params): bool
     {
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $result = $stmt->execute();
-        $stmt->close();
+        return $this->db->statement($sql, $params);
+    }
 
-        return $result;
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->db->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
+        }
+
+        return (int) $this->db->getPdo()->lastInsertId();
     }
 }

@@ -6,7 +6,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Modules\Catalog\Console\Commands\CatalogMigrateCommand;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,7 +14,6 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withCommands([CatalogMigrateCommand::class])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias(['active.user' => EnsureActiveUser::class]);
         $middleware->web(append: [ApplySystemSettings::class]);

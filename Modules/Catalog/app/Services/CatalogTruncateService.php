@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\CatalogTruncateRepository;
 use Modules\Catalog\Support\Config;
-use mysqli;
 use Throwable;
 
 final class CatalogTruncateService
@@ -19,7 +19,7 @@ final class CatalogTruncateService
     private CatalogTruncateRepository $repository;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         ?string $auditLogPath = null
     ) {
         $this->auditLogPath = $auditLogPath ?? Config::get('app')['truncate']['audit_log'];
@@ -103,15 +103,12 @@ final class CatalogTruncateService
 
     private function performTruncate(): void
     {
-        $this->connection->begin_transaction();
         try {
             $this->setForeignKeyChecks(false);
             $this->repository->truncateCatalogTables();
             $this->setForeignKeyChecks(true);
-            $this->connection->commit();
         } catch (Throwable $exception) {
             $this->setForeignKeyChecks(true);
-            $this->connection->rollback();
             throw $exception;
         }
     }

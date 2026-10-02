@@ -247,14 +247,14 @@ final class LegacySpecSearchService
     /**
      * Normalizes the facet filters to arrays of strings.
      *
-     * @param  array<array-key, mixed>  $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, array<int, string>>
      */
     private function normalizeFilters(array $filters): array
     {
         $normalized = [];
         foreach ($filters as $key => $values) {
-            if (! is_string($key) || ! array_key_exists($key, self::FACET_LABELS)) {
+            if (! array_key_exists($key, self::FACET_LABELS)) {
                 continue;
             }
             if (! is_array($values)) {

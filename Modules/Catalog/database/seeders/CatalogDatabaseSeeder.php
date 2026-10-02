@@ -5,26 +5,25 @@ declare(strict_types=1);
 namespace Modules\Catalog\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Modules\Catalog\Repositories\SeriesFieldRepository;
-use Modules\Catalog\Support\Db as CatalogDb;
-use Modules\Catalog\Support\Seeder as CatalogSeeder;
+use Modules\IAM\Models\Permission;
+use Modules\IAM\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
-final class CatalogDatabaseSeeder extends Seeder
+class CatalogDatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $connectionName = config('catalog.connection') ?: config('database.default');
-        DB::connection((string) $connectionName);
-
-        $connection = CatalogDb::connection();
-
-        (new CatalogSeeder($connection))->seedInitialData();
-        $series = $connection->query("SELECT id FROM category WHERE type = 'series'");
-        $fields = new SeriesFieldRepository($connection);
-        foreach ($series->fetch_all(MYSQLI_ASSOC) as $row) {
-            $fields->initializeMetadataDefaults((int) $row['id']);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $permissions = [];
+        foreach (['view', 'manage', 'csv', 'templates', 'truncate'] as $ability) {
+            $permission = Permission::query()->firstOrCreate(['name' => 'catalog.'.$ability, 'guard_name' => 'web']);
+            $permission->forceFill(['is_system' => true])->save();
+            $permissions[] = $permission;
         }
-        $series->close();
+        foreach ([Role::SUPER_ADMIN, 'Admin'] as $roleName) {
+            $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+            $role?->givePermissionTo($permissions);
+        }
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

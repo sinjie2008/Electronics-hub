@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Repositories\CatalogCsvRepository;
-use Modules\Catalog\Repositories\SeriesFieldRepository;
 use Modules\Catalog\Support\Config;
-use mysqli;
 use RuntimeException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 final class CatalogCsvService
@@ -21,7 +22,7 @@ final class CatalogCsvService
     private string $storageDir;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         private SeriesFieldService $seriesFieldService
     ) {
         $this->repository = new CatalogCsvRepository($connection);
@@ -197,7 +198,8 @@ final class CatalogCsvService
         if (! isset($file['tmp_name']) || ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
             throw new CatalogApiException('CSV_REQUIRED', 'CSV file upload is required.', 400);
         }
-        if (! is_uploaded_file($file['tmp_name'])) {
+        $upload = $file['uploaded_file'] ?? null;
+        if ($upload instanceof UploadedFile ? ! $upload->isValid() : ! is_uploaded_file($file['tmp_name'])) {
             throw new CatalogApiException('CSV_REQUIRED', 'Uploaded CSV is invalid.', 400);
         }
 
@@ -206,7 +208,13 @@ final class CatalogCsvService
         $fileId = $this->buildFileId('import', $timestamp, $originalName);
         $destination = $this->buildFilePath($fileId);
 
-        if (! move_uploaded_file($file['tmp_name'], $destination)) {
+        if ($upload instanceof UploadedFile) {
+            try {
+                $upload->move(dirname($destination), basename($destination));
+            } catch (FileException $exception) {
+                throw new CatalogApiException('CSV_UPLOAD_ERROR', 'Failed to store uploaded CSV.', 500);
+            }
+        } elseif (! move_uploaded_file($file['tmp_name'], $destination)) {
             throw new CatalogApiException('CSV_UPLOAD_ERROR', 'Failed to store uploaded CSV.', 500);
         }
 
@@ -256,7 +264,7 @@ final class CatalogCsvService
         return $result;
     }
 
-    public function streamFile(string $fileId, HttpResponder $responder): StreamedResponse
+    public function streamFile(string $fileId, HttpResponder $responder): Response
     {
         $fileId = trim($fileId);
         $this->assertValidFileId($fileId);
@@ -378,7 +386,7 @@ final class CatalogCsvService
 
         $lineNumber = 1;
 
-        $this->connection->begin_transaction();
+        $this->connection->beginTransaction();
         try {
             while (($row = fgetcsv($handle)) !== false) {
                 $lineNumber++;
@@ -509,7 +517,7 @@ final class CatalogCsvService
             if (is_resource($handle)) {
                 fclose($handle);
             }
-            $this->connection->rollback();
+            $this->connection->rollBack();
             throw $exception;
         }
 
@@ -604,8 +612,6 @@ final class CatalogCsvService
             }
         } else {
             $seriesId = $this->repository->insertSeries($parentId, $normalizedName, $displayOrder);
-            (new SeriesFieldRepository($this->connection))
-                ->initializeMetadataDefaults($seriesId);
             $createdSeries++;
         }
 

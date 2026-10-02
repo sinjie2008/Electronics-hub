@@ -4,44 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Persists and reads custom field definitions for catalog series.
  */
 final class SeriesFieldRepository
 {
-    public function __construct(private mysqli $connection) {}
-
-    /** Initialize the legacy default fields only during controlled series creation/seed. */
-    public function initializeMetadataDefaults(int $seriesId): void
-    {
-        $fields = $this->fetchFields($seriesId, 'series_metadata');
-        $byKey = [];
-        $maximumOrder = 0;
-        foreach ($fields as $field) {
-            $byKey[$field['field_key']] = (int) $field['id'];
-            $maximumOrder = max($maximumOrder, (int) $field['sort_order']);
-        }
-        foreach ([
-            ['series_voltage', 'Voltage Range'],
-            ['series_notes', 'Series Notes'],
-        ] as $index => [$key, $label]) {
-            $fieldId = $byKey[$key] ?? $this->insertField(
-                $seriesId, $key, $label, 'text', 'series_metadata', null,
-                $maximumOrder + $index + 1, 0, 0, 0
-            );
-            $statement = $this->connection->prepare(
-                'INSERT INTO series_custom_field_value (series_id, series_custom_field_id, value)
-                 SELECT ?, ?, NULL FROM DUAL WHERE NOT EXISTS (
-                     SELECT 1 FROM series_custom_field_value WHERE series_id = ? AND series_custom_field_id = ?
-                 )'
-            );
-            $statement->bind_param('iiii', $seriesId, $fieldId, $seriesId, $fieldId);
-            $statement->execute();
-            $statement->close();
-        }
-    }
+    public function __construct(private Connection $connection) {}
 
     /**
      * Returns field rows for a series and scope.
@@ -50,24 +20,17 @@ final class SeriesFieldRepository
      */
     public function fetchFields(int $seriesId, string $fieldScope): array
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id, field_key, label, field_type, field_scope, default_value, sort_order, is_required,
-                    is_public_portal_hidden, is_backend_portal_hidden
-             FROM series_custom_field
-             WHERE series_id = ? AND field_scope = ?
-             ORDER BY sort_order, id'
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                'SELECT id, field_key, label, field_type, field_scope, default_value, sort_order, is_required,
+                        is_public_portal_hidden, is_backend_portal_hidden
+                 FROM series_custom_field
+                 WHERE series_id = ? AND field_scope = ?
+                 ORDER BY sort_order, id',
+                [$seriesId, $fieldScope]
+            )
         );
-        $stmt->bind_param('is', $seriesId, $fieldScope);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -85,27 +48,24 @@ final class SeriesFieldRepository
         int $fieldId,
         int $seriesId
     ): void {
-        $stmt = $this->connection->prepare(
+        $this->connection->update(
             'UPDATE series_custom_field
              SET label = ?, field_key = ?, field_type = ?, default_value = ?, sort_order = ?, is_required = ?,
                  is_public_portal_hidden = ?, is_backend_portal_hidden = ?
-             WHERE id = ? AND series_id = ?'
+             WHERE id = ? AND series_id = ?',
+            [
+                $label,
+                $fieldKey,
+                $fieldType,
+                $defaultValue,
+                $sortOrder,
+                $required,
+                $publicPortalHidden,
+                $backendPortalHidden,
+                $fieldId,
+                $seriesId,
+            ]
         );
-        $stmt->bind_param(
-            'ssssiiiiii',
-            $label,
-            $fieldKey,
-            $fieldType,
-            $defaultValue,
-            $sortOrder,
-            $required,
-            $publicPortalHidden,
-            $backendPortalHidden,
-            $fieldId,
-            $seriesId
-        );
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -123,7 +83,7 @@ final class SeriesFieldRepository
         int $publicPortalHidden,
         int $backendPortalHidden
     ): int {
-        $stmt = $this->connection->prepare(
+        return $this->insertId(
             'INSERT INTO series_custom_field (
                 series_id,
                 field_key,
@@ -135,26 +95,20 @@ final class SeriesFieldRepository
                 is_required,
                 is_public_portal_hidden,
                 is_backend_portal_hidden
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $seriesId,
+                $fieldKey,
+                $label,
+                $fieldType,
+                $fieldScope,
+                $defaultValue,
+                $sortOrder,
+                $required,
+                $publicPortalHidden,
+                $backendPortalHidden,
+            ]
         );
-        $stmt->bind_param(
-            'isssssiiii',
-            $seriesId,
-            $fieldKey,
-            $label,
-            $fieldType,
-            $fieldScope,
-            $defaultValue,
-            $sortOrder,
-            $required,
-            $publicPortalHidden,
-            $backendPortalHidden
-        );
-        $stmt->execute();
-        $id = (int) $stmt->insert_id;
-        $stmt->close();
-
-        return $id;
     }
 
     /**
@@ -162,16 +116,10 @@ final class SeriesFieldRepository
      */
     public function fieldExists(int $fieldId): bool
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id FROM series_custom_field WHERE id = ? LIMIT 1'
-        );
-        $stmt->bind_param('i', $fieldId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $field = $result->fetch_assoc();
-        $stmt->close();
-
-        return $field !== null;
+        return $this->connection->selectOne(
+            'SELECT id FROM series_custom_field WHERE id = ? LIMIT 1',
+            [$fieldId]
+        ) !== null;
     }
 
     /**
@@ -179,10 +127,7 @@ final class SeriesFieldRepository
      */
     public function deleteField(int $fieldId): void
     {
-        $stmt = $this->connection->prepare('DELETE FROM series_custom_field WHERE id = ? LIMIT 1');
-        $stmt->bind_param('i', $fieldId);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete('DELETE FROM series_custom_field WHERE id = ? LIMIT 1', [$fieldId]);
     }
 
     /**
@@ -190,16 +135,10 @@ final class SeriesFieldRepository
      */
     public function seriesExists(int $seriesId): bool
     {
-        $stmt = $this->connection->prepare(
-            "SELECT id FROM category WHERE id = ? AND type = 'series' LIMIT 1"
-        );
-        $stmt->bind_param('i', $seriesId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
-
-        return $row !== null;
+        return $this->connection->selectOne(
+            "SELECT id FROM category WHERE id = ? AND type = 'series' LIMIT 1",
+            [$seriesId]
+        ) !== null;
     }
 
     /**
@@ -209,16 +148,12 @@ final class SeriesFieldRepository
      */
     public function findField(int $fieldId): ?array
     {
-        $stmt = $this->connection->prepare(
-            'SELECT id, series_id, field_scope FROM series_custom_field WHERE id = ? LIMIT 1'
+        $field = $this->connection->selectOne(
+            'SELECT id, series_id, field_scope FROM series_custom_field WHERE id = ? LIMIT 1',
+            [$fieldId]
         );
-        $stmt->bind_param('i', $fieldId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $field = $result->fetch_assoc() ?: null;
-        $stmt->close();
 
-        return $field;
+        return $field === null ? null : (array) $field;
     }
 
     /**
@@ -231,18 +166,12 @@ final class SeriesFieldRepository
             $sql .= ' AND id <> ?';
         }
 
-        $stmt = $this->connection->prepare($sql);
+        $bindings = [$seriesId, $fieldScope, $fieldKey];
         if ($excludeId !== null) {
-            $stmt->bind_param('issi', $seriesId, $fieldScope, $fieldKey, $excludeId);
-        } else {
-            $stmt->bind_param('iss', $seriesId, $fieldScope, $fieldKey);
+            $bindings[] = $excludeId;
         }
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $count = (int) ($result->fetch_row()[0] ?? 0);
-        $stmt->close();
 
-        return $count;
+        return (int) $this->connection->scalar($sql, $bindings);
     }
 
     /**
@@ -253,32 +182,39 @@ final class SeriesFieldRepository
      */
     public function fetchFieldsForSeriesIds(array $seriesIds, string $fieldScope): array
     {
-        $placeholders = implode(',', array_fill(0, count($seriesIds), '?'));
-        $types = str_repeat('i', count($seriesIds)).'s';
+        if ($seriesIds === []) {
+            return [];
+        }
 
-        $stmt = $this->connection->prepare(
-            sprintf(
-                'SELECT id, series_id, field_key, label, field_type, field_scope, default_value, sort_order, is_required,
-                        is_public_portal_hidden, is_backend_portal_hidden
-                 FROM series_custom_field
-                 WHERE series_id IN (%s) AND field_scope = ?
-                 ORDER BY sort_order, id',
-                $placeholders
+        $placeholders = implode(',', array_fill(0, count($seriesIds), '?'));
+
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                sprintf(
+                    'SELECT id, series_id, field_key, label, field_type, field_scope, default_value, sort_order, is_required,
+                            is_public_portal_hidden, is_backend_portal_hidden
+                     FROM series_custom_field
+                     WHERE series_id IN (%s) AND field_scope = ?
+                     ORDER BY sort_order, id',
+                    $placeholders
+                ),
+                [...array_map('intval', $seriesIds), $fieldScope]
             )
         );
+    }
 
-        $params = $seriesIds;
-        $params[] = $fieldScope;
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->connection->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
         }
-        $stmt->close();
 
-        return $rows;
+        return (int) $this->connection->getPdo()->lastInsertId();
     }
 }

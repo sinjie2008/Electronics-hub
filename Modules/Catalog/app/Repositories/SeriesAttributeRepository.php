@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Persists series custom field values.
  */
 final class SeriesAttributeRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Returns value rows for the requested series IDs.
@@ -21,28 +21,24 @@ final class SeriesAttributeRepository
      */
     public function fetchValueRows(array $seriesIds): array
     {
-        $placeholders = implode(',', array_fill(0, count($seriesIds), '?'));
-        $types = str_repeat('i', count($seriesIds));
+        if ($seriesIds === []) {
+            return [];
+        }
 
-        $stmt = $this->connection->prepare(
-            sprintf(
-                'SELECT series_id, series_custom_field_id, value
-                 FROM series_custom_field_value
-                 WHERE series_id IN (%s)',
-                $placeholders
+        $placeholders = implode(',', array_fill(0, count($seriesIds), '?'));
+
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select(
+                sprintf(
+                    'SELECT series_id, series_custom_field_id, value
+                     FROM series_custom_field_value
+                     WHERE series_id IN (%s)',
+                    $placeholders
+                ),
+                array_map('intval', $seriesIds)
             )
         );
-        $stmt->bind_param($types, ...$seriesIds);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -50,13 +46,11 @@ final class SeriesAttributeRepository
      */
     public function upsertValue(int $seriesId, int $fieldId, ?string $value): void
     {
-        $stmt = $this->connection->prepare(
+        $this->connection->insert(
             'INSERT INTO series_custom_field_value (series_id, series_custom_field_id, value)
              VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP'
+             ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP',
+            [$seriesId, $fieldId, $value]
         );
-        $stmt->bind_param('iis', $seriesId, $fieldId, $value);
-        $stmt->execute();
-        $stmt->close();
     }
 }

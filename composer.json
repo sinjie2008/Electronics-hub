@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "sinjie2008/electronics-hub",
     "type": "project",
-    "description": "Electronics Hub: a modular Laravel 13 application with Catalog and Filament 5 administration.",
+    "description": "Electronics Hub: a modular Laravel 13 application with Filament 5 administration.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
@@ -11,7 +11,6 @@
         "ext-fileinfo": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "ext-mysqli": "*",
         "ext-pdo": "*",
         "ext-pdo_mysql": "*",
         "ext-redis": "*",

@@ -1,13 +1,13 @@
 # Electronics Hub
 
-A modular Laravel 13 application for electronics catalog management, internal administration, OAuth-protected APIs, and optional AI integrations. The project runs from the repository root as a single Laravel application; `Modules/` holds separately autoloaded application modules.
+A modular Laravel 13 application foundation for internal administration, OAuth-protected APIs, and optional AI integrations. The project runs from the repository root as a single Laravel application; `Modules/` holds separately autoloaded application modules.
 
 ## Features
 
 - A Filament 5 admin panel at `/admin` with session authentication, password reset, email verification, and profile management. Public registration is disabled.
 - Role and permission management backed by Spatie Laravel Permission. The seeded system roles and permissions are protected from unauthorized changes.
-- Four installed modules: protected `Core`, `IAM`, and `System` foundations, plus the optional `Catalog` business module, enabled by default.
-- Native Catalog pages, legacy and file APIs, CSV, specification search, product hierarchy, Typst and LaTeX workflows, and Filament 5 administration. Existing Catalog and WordPress API contracts are retained.
+- Three baseline modules: `Core`, `IAM`, and `System`. Their activation is protected so core access-control and system features cannot be disabled accidentally.
+- An optional `Catalog` module preserves the original catalog pages and APIs, including products, scoped fields, specification search, CSV snapshots, media, and Typst/LaTeX PDF generation.
 - Laravel Passport 13 bearer-token APIs, with user tokens, PKCE public clients, and client-credentials integration clients.
 - User search through Laravel Scout's database driver by default; no separate search service is needed for the baseline setup.
 - Database-backed system settings and administrative activity logs.
@@ -15,16 +15,16 @@ A modular Laravel 13 application for electronics catalog management, internal ad
 - Laravel AI SDK support with optional provider credentials, plus a local, standard-I/O-only Laravel MCP server.
 - Laravel Telescope for local development, disabled by default and installed as a development dependency. Its provider is registered only for an explicitly enabled local environment, and is absent in production even if dev dependencies are accidentally present.
 
-See [Catalog operations](docs/catalog.md), [the architecture guide](docs/architecture.md), [module guide](docs/modules.md), [permissions guide](docs/permissions.md), [OAuth guide](docs/oauth2.md), [search guide](docs/search.md), [backup guide](docs/backup.md), [AI guide](docs/ai.md), and [MCP guide](docs/mcp.md) for operational detail.
+See [the architecture guide](docs/architecture.md), [module guide](docs/modules.md), [Catalog migration and setup](Modules/Catalog/README.md), [permissions guide](docs/permissions.md), [OAuth guide](docs/oauth2.md), [search guide](docs/search.md), [backup guide](docs/backup.md), [AI guide](docs/ai.md), and [MCP guide](docs/mcp.md) for operational detail.
 
 ## Requirements
 
 - Linux runtime with PHP **8.4.1 or later** and Composer 2.
 - Node.js 24 LTS and npm.
 - MySQL 8 or later and Redis 7 or later.
-- The PHP extensions listed in [`composer.json`](composer.json): DOM, fileinfo, JSON, mbstring, MySQLi, PDO, PDO MySQL, Redis, SimpleXML, and ZIP. The CI environment also enables the extensions used by process management and the test tooling.
+- The PHP extensions listed in [`composer.json`](composer.json): DOM, fileinfo, JSON, mbstring, PDO, PDO MySQL, Redis, SimpleXML, and ZIP. The CI environment also enables the extensions used by process management and the test tooling.
 - `mysqldump` on backup workers that create MySQL database dumps.
-- For Catalog PDF generation, install Typst and/or `pdflatex` on the application workers that run those features. The module does not bundle either compiler.
+- Typst and `pdflatex` for Catalog PDF compilation.
 
 The locked package versions and their upstream compatibility declarations are recorded in [package compatibility](docs/package-compatibility.md). Use the committed lock files when installing dependencies.
 
@@ -38,7 +38,9 @@ cd Electronics-hub
 cp .env.example .env
 ```
 
-Create an application database and a separate Catalog database on MySQL 8 or later. Set `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` for the application database, and `CATALOG_DB_DATABASE`, `CATALOG_DB_USERNAME`, and `CATALOG_DB_PASSWORD` for the Catalog database. Both connections may use the same MySQL server, but Catalog requires an unprefixed schema. Set the Redis connection values for your local Redis service. Keep real secrets in the deployment environment or local ignored `.env` file; `.env.example` contains placeholders only.
+Set `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and the Redis connection values in `.env` for your local MySQL and Redis services. Keep real secrets in the deployment environment or local ignored `.env` file; `.env.example` contains placeholders only.
+
+For Catalog, also create a separate MySQL database (default: `electronics_catalog_migrated`) and configure its `CATALOG_DB_*` connection values before migrating. Keep the original source database untouched. Follow [Catalog setup](Modules/Catalog/README.md) to import an independent snapshot and its files; a fresh Catalog database receives the original small baseline tree.
 
 ```bash
 composer install
@@ -46,13 +48,8 @@ npm ci
 php artisan key:generate
 php artisan passport:keys
 php artisan migrate --seed
-php artisan module:migrate Catalog --database=catalog --force
-php artisan db:seed --class='Modules\Catalog\Database\Seeders\CatalogDatabaseSeeder' --database=catalog --force
 npm run build
-(cd Modules/Catalog && npm ci && npm run build:assets)
 ```
-
-The host migration and seed commands initialize the application database and baseline permissions. Catalog schema migration and example-data seeding are explicit commands against the named `catalog` connection; they do not run as part of `migrate --seed`. Review and back up existing Catalog data before applying migrations. See [Catalog operations](docs/catalog.md) for upgrades and asset details.
 
 `composer run dev` starts the Laravel server, default queue listener, and Vite development server. For queued backups, run a worker in a separate terminal:
 
@@ -84,27 +81,13 @@ The Filament panel supports login, logout, password recovery, email verification
 
 The seed creates `Super Admin`, `Admin`, and `User`. An ordered Laravel Gate hook denies inactive accounts, grants the protected Super Admin bypass, and delegates ordinary permissions to Spatie. Policies authorize resource actions, and service methods check escalation and integrity rules again.
 
-When Catalog is enabled, the host seeder creates the system permissions `catalog.view`, `catalog.create`, `catalog.update`, and `catalog.delete`. It does not assign them to the `Admin` role; grant only the required permissions through `/admin/roles`. Active Super Admins use the existing application bypass. Catalog actions still enforce authorization on the server. See the [permissions guide](docs/permissions.md).
-
 Admin receives normal account administration, system viewing, settings editing, backup creation, OAuth client administration, and permitted search. Permission administration, module toggling, and backup download require additional grants. User receives no administrative grants by default. Seeded roles/permissions cannot be renamed or deleted, assigned roles/permissions cannot be deleted, and the final active Super Admin cannot be removed. See [the complete ACL guide](docs/permissions.md).
 
 ## Modules and module management
 
-`Core` holds shared abstractions, `IAM` owns identity and access services/policies/resources, `System` owns operational administration, and `Catalog` owns electronics catalog workflows. Modules declare their own Composer namespaces; the permitted Wikimedia merge plugin loads their manifests. Filament discovers enabled module resources and pages through Coolsam `ModulesPlugin`.
+The included modules are `Core`, `IAM`, `System`, and optional `Catalog`. Core holds shared abstractions, IAM owns identity and access services/policies/resources, System owns operational administration, and Catalog owns the migrated business pages at `/catalog/catalog_ui.html`. Modules declare their own Composer namespaces; the permitted Wikimedia merge plugin loads their manifests. Filament discovers enabled module resources and pages through Coolsam `ModulesPlugin`; Catalog retains its original interface with Laravel session, CSRF, and IAM integration.
 
-`/admin/system/modules` lists names, descriptions, versions, status, paths, and dependencies for installed modules. View, enable, and disable permissions are separate. The foundational modules are protected in the UI and activator; Catalog is optional and is enabled in a fresh checkout. Optional module changes validate dependencies, serialize state writes, and generate audit records. The status page only changes activation state: installing code, running migrations, and deployment cache work belong in the release process. Every application instance must read the same writable module-status file. After module code or activation changes, rebuild route and Filament caches and restart long-lived workers. Read [module development and shared activation-state deployment](docs/modules.md).
-
-## Catalog
-
-The Catalog module provides the catalog, specification search, CSV, Typst, and LaTeX pages and keeps the legacy `catalog.php?action=v1.*` and file API contracts used by existing clients. The six canonical pages start at `/catalog/catalog_ui.html`, `/catalog/spec-search.html`, `/catalog/catalog-csv.html`, `/catalog/global_typst_template.html`, `/catalog/series_typst_template.html`, and `/catalog/latex-templating.html`. See [the Catalog API reference](Modules/Catalog/API.md) for paths, fields, methods, and compatibility details.
-
-Catalog uses a dedicated named MySQL connection configured by `CATALOG_DB_CONNECTION` and `CATALOG_DB_*`. The four `catalog.*` permissions live in the application database; Catalog product data lives in the separate `catalog` database. Disabling Catalog hides its Filament module components and makes its module routes return 404. Its legacy APIs remain public by default to preserve existing integrations; configure the host's network access and CORS policy to match your deployment.
-
-The existing `/admin` panel includes Categories and series, Products, Series fields, Typst templates, and legacy LaTeX templates under the Catalog navigation group. Each resource provides list, search, view, create, edit, and delete operations permitted by the Catalog services. Product attributes and series metadata use their field definitions; file fields remain read-only in Filament and use the original Catalog upload workflow. A series that requires a file must use that workflow for product creation. The LaTeX resource manages the historical `latex_template` table; the file API's separate `latex_templates` contract remains available through its existing endpoints.
-
-PDF features require external command-line tools: install Typst for Typst documents and `pdflatex` for LaTeX documents, or set `CATALOG_TYPST_BIN` and `CATALOG_PDFLATEX_BIN` to their executable paths. The asset bundle has its own lock file and build command under `Modules/Catalog`; it is served by the module and is independent of the host Vite build.
-
-Compatibility intentionally retains several legacy behaviors: root Typst template DELETE reports HTTP 500 Missing ID even when given an ID; Typst textarea variables are stored with type `text`; legacy LaTeX templates with an empty description produce the original TypeError/500; and the file LaTeX variables API continues to return 405 for PUT. These behaviors are documented in the [Catalog API reference](Modules/Catalog/API.md).
+`/admin/system/modules` lists names, descriptions, versions, status, paths, and dependencies for installed modules. View, enable, and disable permissions are separate. The foundational modules are protected in the UI and activator. Optional module changes validate dependencies, serialize state writes, and generate audit records. The status page only changes activation state: installing code, running migrations, and deployment cache work belong in the release process. Every application instance must read the same writable module-status file. After module code or activation changes, rebuild route and Filament caches and restart long-lived workers. Read [module development and shared activation-state deployment](docs/modules.md).
 
 ## OAuth2, Passport, and API
 
@@ -152,26 +135,22 @@ composer validate --strict
 composer audit
 npm ci
 npm run build
-(cd Modules/Catalog && npm ci && npm run build:assets)
 vendor/bin/pint --test
 composer run analyse
-DB_CONNECTION=mysql DB_DATABASE=electronics_hub_testing \
-CATALOG_DB_DATABASE=electronics_catalog_testing \
-RUN_REDIS_INTEGRATION=true RUN_CATALOG_COMPILER_INTEGRATION=true \
-php artisan test --compact
+php artisan test
 ```
 
-Create the two disposable databases shown above and grant your configured local account access before running the suite. Catalog tests refuse a database name without the `_test` or `_testing` suffix and refuse a connection shared with the host database. The host PHPUnit defaults use SQLite/array/sync; the command above selects real MySQL and enables Redis integration and real PDF compilation. It requires Redis, Typst, and `pdflatex` on PATH, or the configured compiler binary paths. Database/full backup tests execute actual MySQL dumps; Redis integration exercises cache locks, browser sessions, and a real backup queue worker. The suite also covers Filament authentication/resources/actions, ACL escalation, module protection, PKCE/token issuance/scopes, search, settings, audit redaction, AI fakes, and safe MCP output. See [development operations](docs/development.md).
+The default local suite uses isolated SQLite/array/sync services; Catalog feature tests require MySQL. For the complete Linux integration run, provide a disposable MySQL database and Redis, set `RUN_REDIS_INTEGRATION=true`, and install Typst and `pdflatex`. Database/full backup tests execute actual MySQL dumps; Redis integration exercises cache locks, browser sessions, and a real backup queue worker. The suite also covers Filament authentication/resources/actions, ACL escalation, module protection, PKCE/token issuance/scopes, search, settings, audit redaction, AI fakes, safe MCP output, and Catalog APIs, uploads, CSV snapshots, and real PDF compilation. See [development operations](docs/development.md).
 
 ## CI
 
-GitHub Actions runs on Ubuntu with PHP 8.4, Node 24, and ephemeral MySQL 8 and Redis 7 services. It installs the required extensions and MySQL dump tools, creates separate disposable application and Catalog databases, validates and audits Composer dependencies, builds host and Catalog assets, runs both sets of migrations and seeders, checks module routes and Laravel/Filament caches, and runs Pint, Larastan, and Pest. The database and Redis credentials in CI are disposable test-only values. Composer and both npm lock files are committed.
+GitHub Actions runs on Ubuntu with PHP 8.4, Node 24, and ephemeral MySQL 8 and Redis 7 services. It installs the required extensions, MySQL dump tools, Typst, and `pdflatex`, validates and audits Composer dependencies, builds assets, verifies the Catalog asset manifest, exercises migrations plus Laravel and Filament caches, and runs Pint, Larastan, and Pest. The database and Redis credentials in CI are disposable test-only values. Both dependency lock files are committed.
 
 ## Security and deployment notes
 
 Serve only `public/` over HTTPS, set secure session cookies in production, and configure trusted reverse proxies for your deployment. Browser routes use Laravel CSRF protection and sessions; API routes use Passport scopes, rate limits, active-account checks, and policies. Passwords use Laravel hashing and strong validation. Backups remain private and downloads validate the existing archive inventory.
 
-For production, install PHP dependencies with `composer install --no-dev --prefer-dist --optimize-autoloader --classmap-authoritative`, build the host frontend with `npm ci && npm run build`, and build Catalog assets with `cd Modules/Catalog && npm ci && npm run build:assets`. Set `APP_ENV=production` and `APP_DEBUG=false`, and provide secrets and both MySQL connection settings through the environment. Generate and securely persist the Laravel application key and Passport keys before serving traffic. Serve only the `public/` directory, run `php artisan migrate --seed --force` for host schema and permissions, then run the explicit Catalog migration and seeder commands above against a reviewed Catalog database. Keep the queue worker and Laravel scheduler running, and grant the web/worker user write access only to the required `storage/` and `bootstrap/cache/` paths.
+For production, install PHP dependencies with `composer install --no-dev --prefer-dist --optimize-autoloader --classmap-authoritative`, build the frontend with `npm ci && npm run build`, set `APP_ENV=production` and `APP_DEBUG=false`, and provide secrets and service endpoints through the environment. Generate and securely persist the Laravel application key and Passport keys before serving traffic. Serve only the `public/` directory, run `php artisan migrate --seed --force` to establish baseline roles and permissions, keep the queue worker and Laravel scheduler running, and grant the web/worker user write access only to the required `storage/` and `bootstrap/cache/` paths.
 
 For optional module toggles on a read-only release, set `MODULE_STATUSES_PATH` to a shared writable JSON file outside the release and initialize it from `modules_statuses.json`. Ensure all instances use the same file. After module registration or activation changes, clear and rebuild the Laravel route and Filament component caches in the release process, then restart long-lived workers. The web UI does not run install, update, migration, or deployment commands. Configure off-host backup storage, retention, monitoring, mail, and scheduler/worker supervision for the target environment.
 

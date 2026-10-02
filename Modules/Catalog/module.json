@@ -1,10 +1,15 @@
 {
     "name": "Catalog",
     "alias": "catalog",
-    "description": "Catalog, specification search, CSV tools and Typst/LaTeX APIs",
-    "keywords": ["catalog"],
-    "priority": 0,
-    "requires": ["Core", "IAM"],
-    "providers": ["Modules\\Catalog\\Providers\\CatalogServiceProvider"],
+    "description": "Catalog Suite pages, CSV workflows, specification search, and PDF templating.",
+    "version": "1.0.0",
+    "priority": 30,
+    "requires": [
+        "Core",
+        "IAM"
+    ],
+    "providers": [
+        "Modules\\Catalog\\Providers\\CatalogServiceProvider"
+    ],
     "files": []
 }

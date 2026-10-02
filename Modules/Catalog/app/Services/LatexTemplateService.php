@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\LatexTemplateRepository;
 use Modules\Catalog\Support\Config;
-use mysqli;
 use Throwable;
 
 final class LatexTemplateService
@@ -17,7 +17,7 @@ final class LatexTemplateService
     private LatexTemplateRepository $repository;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         ?string $pdfStorageDir = null
     ) {
         $config = Config::get('app');
@@ -213,14 +213,9 @@ final class LatexTemplateService
             return null;
         }
 
-        $suffix = $this->pdfSuffix($relativePath);
-        if ($suffix !== null) {
-            $prefix = rtrim((string) Config::get('app')['latex']['pdf_url_prefix'], '/');
+        $normalized = '/'.ltrim(str_replace('\\', '/', $relativePath), '/');
 
-            return $prefix.'/'.$suffix;
-        }
-
-        return '/'.ltrim(str_replace('\\', '/', $relativePath), '/');
+        return $normalized;
     }
 
     private function formatTimestamp(?string $value): ?string
@@ -241,8 +236,14 @@ final class LatexTemplateService
         if ($relativePath === null || $relativePath === '') {
             return;
         }
-        $suffix = $this->pdfSuffix($relativePath);
-        if ($suffix === null) {
+        $normalizedRelative = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $prefix = ltrim((string) (Config::get('app')['latex']['pdf_url_prefix'] ?? '/storage/latex-pdfs'), '/');
+        if (! str_starts_with($normalizedRelative, $prefix)) {
+            return;
+        }
+
+        $suffix = ltrim(substr($normalizedRelative, strlen($prefix)), '/');
+        if ($suffix === '') {
             return;
         }
 
@@ -250,22 +251,6 @@ final class LatexTemplateService
         if (is_file($absolute)) {
             @unlink($absolute);
         }
-    }
-
-    /** Recognize both pre-migration and mounted PDF paths without rewriting stored data. */
-    private function pdfSuffix(string $path): ?string
-    {
-        $normalized = '/'.ltrim(str_replace('\\', '/', $path), '/');
-        $marker = '/storage/latex-pdfs/';
-        $position = strpos($normalized, $marker);
-        if ($position === false) {
-            return null;
-        }
-        $suffix = substr($normalized, $position + strlen($marker));
-
-        return $suffix !== '' && ! str_contains($suffix, '/') && ! str_contains($suffix, "\0")
-            ? $suffix
-            : null;
     }
 
     private function generateCorrelationId(): string

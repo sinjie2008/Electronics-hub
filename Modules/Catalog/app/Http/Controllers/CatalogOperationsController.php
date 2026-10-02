@@ -235,10 +235,11 @@ final class CatalogOperationsController
     /** Create the application only when a catalog operation needs it. */
     private function createCatalogApplication(): CatalogController
     {
-        if ($this->catalogApplicationFactory !== null) {
-            return ($this->catalogApplicationFactory)();
-        }
+        $application = $this->catalogApplicationFactory !== null
+            ? ($this->catalogApplicationFactory)()
+            : app(CatalogController::class);
+        $application->bootstrap();
 
-        return app(CatalogController::class);
+        return $application;
     }
 }

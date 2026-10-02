@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Repositories\SpecSearchRepository;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
-use mysqli;
 
 /**
  * Shapes catalog data for root categories, facets, and product search.
@@ -25,7 +25,7 @@ final class SpecSearchService
     /**
      * Create the service with injectable persistence.
      */
-    public function __construct(?mysqli $db = null, ?SpecSearchRepository $catalog = null)
+    public function __construct(?Connection $db = null, ?SpecSearchRepository $catalog = null)
     {
         $config = Config::get('app');
         $projectRoot = rtrim(

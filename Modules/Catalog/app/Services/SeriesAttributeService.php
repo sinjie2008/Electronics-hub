@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\SeriesAttributeRepository;
-use mysqli;
 use Throwable;
 
 final class SeriesAttributeService
@@ -14,7 +14,7 @@ final class SeriesAttributeService
     private SeriesAttributeRepository $repository;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         private SeriesFieldService $seriesFieldService,
         private MediaStorageService $mediaStorageService
     ) {
@@ -120,7 +120,7 @@ final class SeriesAttributeService
         $deleteAfterCommit = [];
 
         if ($wrapInTransaction) {
-            $this->connection->begin_transaction();
+            $this->connection->beginTransaction();
         }
         try {
             foreach ($plans as $index => $plan) {
@@ -158,7 +158,7 @@ final class SeriesAttributeService
             }
         } catch (Throwable $exception) {
             if ($wrapInTransaction) {
-                $this->connection->rollback();
+                $this->connection->rollBack();
             }
             foreach ($newFiles as $path) {
                 $this->mediaStorageService->deleteFile($path);

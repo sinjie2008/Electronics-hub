@@ -2,16 +2,17 @@
 <html lang="en">
 
 <head>
-    <base href="{{ $catalogBaseUrl }}/">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Global Typst Template</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] }}">
-    <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] }}">
-    <link rel="stylesheet" href="assets/css/global_typst_template.css?v={{ $catalogAssetVersions['css/global_typst_template.css'] }}">
+    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] ?? '' }}">
+    <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] ?? '' }}">
+    <link rel="stylesheet" href="assets/css/global_typst_template.css?v={{ $catalogAssetVersions['css/global_typst_template.css'] ?? '' }}">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
 </head>
 
 <body data-logging-enabled="true">
@@ -110,7 +111,7 @@
                                 </table>
                             </div>
                             <div class="form-text small mt-2">
-                                Click the Field Key badge to insert <code>@{{key}}</code> into the editor, or use Edit to load the variable for changes.
+                                Click the Field Key badge to insert <code>@verbatim{{key}}@endverbatim</code> into the editor, or use Edit to load the variable for changes.
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -212,10 +213,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] }}"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] }}"></script>
-    <script type="module" src="assets/js/global-typst-templating.js?v={{ $catalogAssetVersions['js/global-typst-templating.js'] }}"></script>
+    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] ?? '' }}"></script>
+    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
+    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
+    <script type="module" src="assets/js/global-typst-templating.js?v={{ $catalogAssetVersions['js/global-typst-templating.js'] ?? '' }}"></script>
 </body>
 
 </html>

@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Persists and retrieves catalog categories, products, and series fields.
  */
 final class CatalogRepository
 {
-    private mysqli $db;
+    private Connection $db;
 
     private ?bool $hasLegacyTemplatingColumn = null;
 
     /**
      * Create the repository with the application's database connection.
      */
-    public function __construct(mysqli $db)
+    public function __construct(Connection $db)
     {
         $this->db = $db;
     }
@@ -35,16 +35,12 @@ final class CatalogRepository
             $columns[] = 'latex_templating_enabled';
         }
 
-        $result = $this->db->query(
-            'SELECT '.implode(', ', $columns).' FROM category ORDER BY display_order ASC, name ASC'
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select(
+                'SELECT '.implode(', ', $columns).' FROM category ORDER BY display_order ASC, name ASC'
+            )
         );
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $result->close();
-
-        return $rows;
     }
 
     /**
@@ -54,14 +50,10 @@ final class CatalogRepository
      */
     public function getHierarchyProducts(): array
     {
-        $result = $this->db->query('SELECT id, series_id, name, sku FROM product ORDER BY name ASC');
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $result->close();
-
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select('SELECT id, series_id, name, sku FROM product ORDER BY name ASC')
+        );
     }
 
     /**
@@ -71,15 +63,12 @@ final class CatalogRepository
      */
     public function searchCategories(string $term): array
     {
-        $searchTerm = '%'.$this->db->real_escape_string($term).'%';
-        $stmt = $this->db->prepare('SELECT id, parent_id, name, type FROM category WHERE name LIKE ?');
-        $stmt->bind_param('s', $searchTerm);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        $searchTerm = '%'.$term.'%';
 
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select('SELECT id, parent_id, name, type FROM category WHERE name LIKE ?', [$searchTerm])
+        );
     }
 
     /**
@@ -89,15 +78,15 @@ final class CatalogRepository
      */
     public function searchProducts(string $term): array
     {
-        $searchTerm = '%'.$this->db->real_escape_string($term).'%';
-        $stmt = $this->db->prepare('SELECT id, series_id, name FROM product WHERE name LIKE ? OR sku LIKE ?');
-        $stmt->bind_param('ss', $searchTerm, $searchTerm);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
+        $searchTerm = '%'.$term.'%';
 
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select(
+                'SELECT id, series_id, name FROM product WHERE name LIKE ? OR sku LIKE ?',
+                [$searchTerm, $searchTerm]
+            )
+        );
     }
 
     /**
@@ -107,13 +96,12 @@ final class CatalogRepository
      */
     public function findSeries(int $seriesId): ?array
     {
-        $stmt = $this->db->prepare("SELECT id, parent_id, name, type FROM category WHERE id = ? AND type = 'series'");
-        $stmt->bind_param('i', $seriesId);
-        $stmt->execute();
-        $series = $stmt->get_result()->fetch_assoc() ?: null;
-        $stmt->close();
+        $series = $this->db->selectOne(
+            "SELECT id, parent_id, name, type FROM category WHERE id = ? AND type = 'series'",
+            [$seriesId]
+        );
 
-        return $series;
+        return $series === null ? null : (array) $series;
     }
 
     /**
@@ -123,19 +111,16 @@ final class CatalogRepository
      */
     public function getSeriesMetadata(int $seriesId): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT f.field_key, f.label, v.value
-             FROM series_custom_field f
-             LEFT JOIN series_custom_field_value v ON f.id = v.series_custom_field_id AND v.series_id = ?
-             WHERE f.series_id = ? AND f.field_scope = 'series_metadata'"
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select(
+                "SELECT f.field_key, f.label, v.value
+                 FROM series_custom_field f
+                 LEFT JOIN series_custom_field_value v ON f.id = v.series_custom_field_id AND v.series_id = ?
+                 WHERE f.series_id = ? AND f.field_scope = 'series_metadata'",
+                [$seriesId, $seriesId]
+            )
         );
-        $stmt->bind_param('ii', $seriesId, $seriesId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -145,23 +130,20 @@ final class CatalogRepository
      */
     public function getProductAttributeFields(int $seriesId): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT field_key, label, field_type
-             FROM series_custom_field
-             WHERE series_id = ? AND field_scope = 'product_attribute'
-             ORDER BY sort_order ASC"
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select(
+                "SELECT field_key, label, field_type
+                 FROM series_custom_field
+                 WHERE series_id = ? AND field_scope = 'product_attribute'
+                 ORDER BY sort_order ASC",
+                [$seriesId]
+            )
         );
-        $stmt->bind_param('i', $seriesId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
-     * Return whether the legacy LaTeX flag exists.
+     * Return whether the legacy LaTeX flag exists, without changing the schema.
      */
     private function hasLegacyTemplatingColumn(): bool
     {
@@ -177,15 +159,9 @@ final class CatalogRepository
      */
     private function hasCategoryColumn(string $column): bool
     {
-        $stmt = $this->db->prepare(
-            'SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
-        );
-        $table = 'category';
-        $stmt->bind_param('ss', $table, $column);
-        $stmt->execute();
-        $count = (int) ($stmt->get_result()->fetch_row()[0] ?? 0);
-        $stmt->close();
-
-        return $count > 0;
+        return (int) $this->db->scalar(
+            'SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            ['category', $column]
+        ) > 0;
     }
 }

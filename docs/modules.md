@@ -2,16 +2,17 @@
 
 The repository uses [Laravel Modules 13](https://laravelmodules.com/docs/13/getting-started/installation-and-setup) with the [Coolsam Filament Modules plugin](https://filamentphp.com/plugins/coolsam-modules). Modules live beneath `Modules/`, but each module is a Composer package boundary rather than a directory covered by a root `Modules\` PSR-4 rule.
 
-## Installed modules
+## Baseline modules
 
 | Module | Responsibility |
 | --- | --- |
 | `Core` | Shared foundation and application-wide conventions. |
 | `IAM` | Users, roles, permissions, and access-control policies. |
 | `System` | Administrative system settings, activity, and backup operations. |
-| `Catalog` | Electronics catalog, specification search, CSV, Typst, LaTeX, and their legacy APIs. |
 
-The `Core`, `IAM`, and `System` modules are protected and must stay enabled. The protected activator enforces that invariant when module state changes. `Catalog` is shipped enabled but may be disabled as an optional business module. Do not edit `modules_statuses.json` to bypass the activator. Run `php artisan module:list` to inspect module state.
+The optional `Catalog` business module is also included. It preserves the source application's pages and API contracts, uses a separate MySQL database and private storage, and integrates with the host's sessions, CSRF protection, and IAM permissions. Its interface is mounted at `/catalog/catalog_ui.html`; setup, migrations, compiler requirements, and recorded verification are in the [Catalog module guide](../Modules/Catalog/README.md).
+
+The `Core`, `IAM`, and `System` modules are protected and must stay enabled. The protected activator enforces that invariant when module state changes. Do not edit `modules_statuses.json` to bypass it. Run `php artisan module:list` to inspect module state.
 
 Optional-module activation is runtime state recorded in `modules_statuses.json`. The deployment must make that file writable by the process that changes module state and ensure every application instance reads the same state. For a read-only release directory, set `MODULE_STATUSES_PATH` to a writable shared JSON file outside the release and initialize it from the tracked baseline. Changes are serialized with file locks and written atomically; failed audit persistence compensates the state change. If consistent shared filesystem state cannot be guaranteed, restrict optional-module changes to deployment releases. The Filament page only lists, enables, and disables installed module code; it must not run Composer installs or updates, migrations, deployment scripts, or cache rebuilds from a web request.
 
@@ -21,13 +22,9 @@ The root `composer.json` merges `Modules/*/composer.json` with `wikimedia/compos
 
 Use the module's existing directory conventions for providers, policies, Filament code, routes, migrations, seeders, resources, and tests. Keep shared application shell concerns in the root `app/` tree. A module should communicate through public classes and service contracts, not another module's internal implementation.
 
-Catalog uses the host's named `catalog` MySQL connection from `CATALOG_DB_*`; it expects unprefixed tables. Host `php artisan migrate --seed` does not run its module migration. Apply Catalog's schema and example data explicitly with the commands in [Catalog operations](catalog.md). Its API and page URLs retain the standalone integration contracts documented in [`Modules/Catalog/API.md`](../Modules/Catalog/API.md).
-
-Laravel Modules migration auto-discovery is disabled so a host migration cannot accidentally write Catalog tables or migration records to the host database. Core, IAM, and System keep their migrations in the host application; Catalog migration records live in its separate database. Future business modules must use an explicit module migration command or deliberately own migration loading in their provider.
-
 ## Filament plugins
 
-Filament module UI is registered through Coolsam in plugin mode. Module plugin classes such as `IAMPlugin`, `SystemPlugin`, and `CatalogPlugin` are discovered by the admin panel's module integration. The installed `ModuleFilamentPlugin` trait checks that a module is enabled before discovering its resources, pages, widgets, and Livewire components. Composer autoloading makes a class available even when its module is disabled.
+Filament module UI is registered through Coolsam in plugin mode. Module plugin classes such as `IAMPlugin` and `SystemPlugin` are discovered by the admin panel's module integration. The installed ModuleFilamentPlugin trait checks that a module is enabled before discovering its resources, pages, widgets, and Livewire components. Composer autoloading makes a class available even when its module is disabled.
 
 When adding a module-owned resource, page, or widget, keep it inside that module's Filament namespace and register it through the module plugin. Protect the page or resource with the relevant application policy and permission; hiding a navigation item does not authorize a request.
 
@@ -42,4 +39,4 @@ php artisan module:make:filament-plugin Reporting Reporting
 
 Add the module's `composer.json` autoload mapping, then run `composer dump-autoload`. Add provider, migrations, permissions, a Filament plugin, and tests as needed. Test disabled-module behavior as well as the enabled path, then deploy the module code and migrations before activating it. The admin page enforces application permissions and dependency checks and writes an audit record. A controlled release can use `php artisan module:enable Reporting` to update `modules_statuses.json` when that state belongs in every deployment; this package command does not call the application dependency checks or audit wrapper, so validate dependencies and record the release action through the deployment process. The protected activator refuses to disable any baseline module.
 
-In deployment, install the committed lock file and ship the module source with the application. Do not depend on a module existing only in a developer's working tree. After changing module files, plugins, providers, or activation state, clear caches with `php artisan optimize:clear` and `php artisan filament:optimize-clear`, rebuild them with `php artisan optimize` and `php artisan filament:optimize`, then restart long-lived queue workers. If the activation file is writable at runtime, rebuild these caches through the deployment pipeline after toggles; the web page does not perform deployment work. For a separately versioned module package, update the project's package and autoload policy deliberately and verify it against [the compatibility matrix](package-compatibility.md).
+In deployment, install the committed lock file and ship the module source with the application. Do not depend on a module existing only in a developer's working tree. After changing module files, plugins, providers, or activation state, clear and rebuild Laravel's route/configuration/view caches and Filament's component caches as part of the release, then restart long-lived queue workers. If the activation file is writable at runtime, rebuild these caches through the deployment pipeline after toggles; the web page does not perform deployment work. For a separately versioned module package, update the project's package and autoload policy deliberately and verify it against [the compatibility matrix](package-compatibility.md).

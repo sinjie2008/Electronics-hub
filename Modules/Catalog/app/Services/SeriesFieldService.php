@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\SeriesFieldRepository;
-use mysqli;
 
 final class SeriesFieldService
 {
@@ -16,7 +16,7 @@ final class SeriesFieldService
 
     private SeriesFieldRepository $repository;
 
-    public function __construct(private mysqli $connection)
+    public function __construct(private Connection $connection)
     {
         $this->repository = new SeriesFieldRepository($connection);
     }

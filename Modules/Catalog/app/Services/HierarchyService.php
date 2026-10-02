@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\HierarchyRepository;
-use Modules\Catalog\Repositories\SeriesFieldRepository;
-use mysqli;
 
 final class HierarchyService
 {
@@ -15,7 +14,7 @@ final class HierarchyService
 
     private HierarchyRepository $repository;
 
-    public function __construct(private mysqli $connection)
+    public function __construct(Connection $connection)
     {
         $this->repository = new HierarchyRepository($connection);
     }
@@ -130,11 +129,6 @@ final class HierarchyService
         } else {
             $newId = $this->insertCategoryNode($parentId, $name, $type, $displayOrder);
             $result = $this->loadCategory($newId);
-        }
-
-        if ($type === 'series' && ($nodeId === null || $existing['type'] !== 'series')) {
-            (new SeriesFieldRepository($this->connection))
-                ->initializeMetadataDefaults((int) $result['id']);
         }
 
         return [
@@ -309,17 +303,9 @@ final class HierarchyService
     private function hasLegacyTemplatingColumn(): bool
     {
         if ($this->hasLegacyTemplatingColumn === null) {
-            $this->hasLegacyTemplatingColumn = $this->hasCategoryColumn('latex_templating_enabled');
+            $this->hasLegacyTemplatingColumn = $this->repository->hasCategoryColumn('latex_templating_enabled');
         }
 
         return $this->hasLegacyTemplatingColumn;
-    }
-
-    /**
-     * Checks whether a column exists on the category table.
-     */
-    private function hasCategoryColumn(string $column): bool
-    {
-        return $this->repository->hasCategoryColumn($column);
     }
 }

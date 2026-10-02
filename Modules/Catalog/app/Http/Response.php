@@ -16,7 +16,7 @@ final class Response
      *
      * @param  array<string, mixed>|list<mixed>|null  $data
      */
-    public static function success($data, int $status = 200, ?string $correlationId = null): LaravelResponse
+    public static function success(mixed $data, int $status = 200, ?string $correlationId = null): LaravelResponse
     {
         $cid = $correlationId ?? CorrelationId::generate();
 

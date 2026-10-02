@@ -1,34 +1,45 @@
 import { createHash } from 'node:crypto';
-import { cp, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as sass from 'sass';
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceRoot = path.join(moduleRoot, 'resources', 'assets');
-const outputRoot = path.join(moduleRoot, 'public', 'assets');
-const cssRoot = path.join(outputRoot, 'css');
-await mkdir(cssRoot, { recursive: true });
+const publicRoot = path.join(moduleRoot, 'public', 'assets');
+const versions = {};
 
-for (const fileName of (await readdir(path.join(sourceRoot, 'scss'))).sort()) {
-    if (!fileName.endsWith('.scss') || fileName.startsWith('_')) continue;
-    const result = sass.compile(path.join(sourceRoot, 'scss', fileName), { style: 'expanded', sourceMap: false });
-    await writeFile(path.join(cssRoot, fileName.replace(/\.scss$/, '.css')), result.css, 'utf8');
-}
-await cp(path.join(sourceRoot, 'js'), path.join(outputRoot, 'js'), { recursive: true, force: true });
+async function copyAssets(type, extension) {
+    const sourceDirectory = path.join(sourceRoot, type);
+    const outputDirectory = path.join(publicRoot, type);
+    await mkdir(outputDirectory, { recursive: true });
 
-const manifest = {};
-for (const directory of ['css', 'js']) {
-    for (const fileName of (await readdir(path.join(outputRoot, directory))).sort()) {
-        const asset = directory + '/' + fileName;
-        const assetPath = path.join(outputRoot, asset);
-        let content = await readFile(assetPath);
-        if (directory === 'js') {
-            content = Buffer.from(content.toString('utf8').replace(/\r\n/g, '\n'));
-            await writeFile(assetPath, content);
-        }
-        manifest[asset] = createHash('sha256').update(content).digest('hex').slice(0, 16);
+    const entries = await readdir(sourceDirectory, { withFileTypes: true });
+    const files = entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith(extension))
+        .map((entry) => entry.name)
+        .sort();
+
+    for (const fileName of files) {
+        const contents = (await readFile(path.join(sourceDirectory, fileName), 'utf8'))
+            .replace(/\r\n/g, '\n');
+        await writeFile(path.join(outputDirectory, fileName), contents);
+        versions[`${type}/${fileName}`] = createHash('sha256')
+            .update(contents)
+            .digest('hex')
+            .slice(0, 16);
     }
+
+    return files.length;
 }
-await writeFile(path.join(outputRoot, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-console.log('Built ' + Object.keys(manifest).length + ' Catalog assets and content hashes.');
+
+const cssCount = await copyAssets('css', '.css');
+const javascriptCount = await copyAssets('js', '.js');
+const manifest = Object.fromEntries(Object.entries(versions).sort(([left], [right]) => left.localeCompare(right)));
+
+await writeFile(
+    path.join(publicRoot, 'manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    'utf8',
+);
+
+console.log(`Copied ${cssCount} CSS files and ${javascriptCount} JavaScript files.`);

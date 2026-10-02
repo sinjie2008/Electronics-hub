@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Support\Config;
-use mysqli;
 
 /**
  * Reads and persists catalog data used by CSV import and export workflows.
  */
 final class CatalogCsvRepository
 {
-    public function __construct(private mysqli $connection) {}
+    public function __construct(private Connection $connection) {}
 
     /**
      * Finds an existing category with the given parent and exact name.
@@ -21,16 +21,10 @@ final class CatalogCsvRepository
      */
     public function findCategory(?int $parentId, string $name): ?array
     {
-        $stmt = $this->connection->prepare(
-            "SELECT id FROM category WHERE parent_id <=> ? AND name = ? AND type = 'category' LIMIT 1"
+        return $this->selectOne(
+            "SELECT id FROM category WHERE parent_id <=> ? AND name = ? AND type = 'category' LIMIT 1",
+            [$parentId, $name]
         );
-        $stmt->bind_param('is', $parentId, $name);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
-
-        return $row;
     }
 
     /**
@@ -38,15 +32,10 @@ final class CatalogCsvRepository
      */
     public function insertCategory(?int $parentId, string $name): int
     {
-        $insert = $this->connection->prepare(
-            "INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, 'category', 0)"
+        return $this->insertId(
+            "INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, 'category', 0)",
+            [$parentId, $name]
         );
-        $insert->bind_param('is', $parentId, $name);
-        $insert->execute();
-        $id = (int) $insert->insert_id;
-        $insert->close();
-
-        return $id;
     }
 
     /**
@@ -56,16 +45,10 @@ final class CatalogCsvRepository
      */
     public function findSeries(?int $parentId, string $name): ?array
     {
-        $stmt = $this->connection->prepare(
-            "SELECT id, display_order FROM category WHERE parent_id <=> ? AND name = ? AND type = 'series' LIMIT 1"
+        return $this->selectOne(
+            "SELECT id, display_order FROM category WHERE parent_id <=> ? AND name = ? AND type = 'series' LIMIT 1",
+            [$parentId, $name]
         );
-        $stmt->bind_param('is', $parentId, $name);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
-
-        return $row;
     }
 
     /**
@@ -73,10 +56,7 @@ final class CatalogCsvRepository
      */
     public function updateSeriesDisplayOrder(int $seriesId, int $displayOrder): void
     {
-        $update = $this->connection->prepare('UPDATE category SET display_order = ? WHERE id = ?');
-        $update->bind_param('ii', $displayOrder, $seriesId);
-        $update->execute();
-        $update->close();
+        $this->connection->update('UPDATE category SET display_order = ? WHERE id = ?', [$displayOrder, $seriesId]);
     }
 
     /**
@@ -84,15 +64,10 @@ final class CatalogCsvRepository
      */
     public function insertSeries(?int $parentId, string $name, int $displayOrder): int
     {
-        $insert = $this->connection->prepare(
-            "INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, 'series', ?)"
+        return $this->insertId(
+            "INSERT INTO category (parent_id, name, type, display_order) VALUES (?, ?, 'series', ?)",
+            [$parentId, $name, $displayOrder]
         );
-        $insert->bind_param('isi', $parentId, $name, $displayOrder);
-        $insert->execute();
-        $seriesId = (int) $insert->insert_id;
-        $insert->close();
-
-        return $seriesId;
     }
 
     /**
@@ -102,16 +77,7 @@ final class CatalogCsvRepository
      */
     public function findProductBySku(int $seriesId, string $sku): ?array
     {
-        $select = $this->connection->prepare(
-            'SELECT id FROM product WHERE series_id = ? AND sku = ? LIMIT 1'
-        );
-        $select->bind_param('is', $seriesId, $sku);
-        $select->execute();
-        $result = $select->get_result();
-        $row = $result->fetch_assoc();
-        $select->close();
-
-        return $row;
+        return $this->selectOne('SELECT id FROM product WHERE series_id = ? AND sku = ? LIMIT 1', [$seriesId, $sku]);
     }
 
     /**
@@ -119,12 +85,10 @@ final class CatalogCsvRepository
      */
     public function updateProductFromImport(string $name, ?string $description, int $productId): void
     {
-        $update = $this->connection->prepare(
-            'UPDATE product SET name = ?, description = ? WHERE id = ?'
+        $this->connection->update(
+            'UPDATE product SET name = ?, description = ? WHERE id = ?',
+            [$name, $description, $productId]
         );
-        $update->bind_param('ssi', $name, $description, $productId);
-        $update->execute();
-        $update->close();
     }
 
     /**
@@ -132,15 +96,10 @@ final class CatalogCsvRepository
      */
     public function insertProduct(int $seriesId, string $sku, string $name, ?string $description): int
     {
-        $insert = $this->connection->prepare(
-            'INSERT INTO product (series_id, sku, name, description) VALUES (?, ?, ?, ?)'
+        return $this->insertId(
+            'INSERT INTO product (series_id, sku, name, description) VALUES (?, ?, ?, ?)',
+            [$seriesId, $sku, $name, $description]
         );
-        $insert->bind_param('isss', $seriesId, $sku, $name, $description);
-        $insert->execute();
-        $productId = (int) $insert->insert_id;
-        $insert->close();
-
-        return $productId;
     }
 
     /**
@@ -154,18 +113,12 @@ final class CatalogCsvRepository
         array $customValues,
         array $seriesFieldMap
     ): void {
-        $delete = $this->connection->prepare('DELETE FROM product_custom_field_value WHERE product_id = ?');
-        $delete->bind_param('i', $productId);
-        $delete->execute();
-        $delete->close();
+        $this->connection->delete('DELETE FROM product_custom_field_value WHERE product_id = ?', [$productId]);
 
         if ($customValues === []) {
             return;
         }
 
-        $insert = $this->connection->prepare(
-            'INSERT INTO product_custom_field_value (product_id, series_custom_field_id, value) VALUES (?, ?, ?)'
-        );
         foreach ($customValues as $fieldKey => $value) {
             $value = trim((string) $value);
             if ($value === '') {
@@ -175,10 +128,11 @@ final class CatalogCsvRepository
                 continue;
             }
             $fieldId = (int) $seriesFieldMap[$fieldKey]['id'];
-            $insert->bind_param('iis', $productId, $fieldId, $value);
-            $insert->execute();
+            $this->connection->insert(
+                'INSERT INTO product_custom_field_value (product_id, series_custom_field_id, value) VALUES (?, ?, ?)',
+                [$productId, $fieldId, $value]
+            );
         }
-        $insert->close();
     }
 
     /**
@@ -188,14 +142,10 @@ final class CatalogCsvRepository
      */
     public function fetchProductIds(): array
     {
-        $result = $this->connection->query('SELECT id FROM product');
-        $ids = [];
-        while ($row = $result->fetch_assoc()) {
-            $ids[] = (int) $row['id'];
-        }
-        $result->free();
-
-        return $ids;
+        return array_map(
+            static fn (object $row): int => (int) $row->id,
+            $this->connection->select('SELECT id FROM product')
+        );
     }
 
     /**
@@ -205,14 +155,10 @@ final class CatalogCsvRepository
      */
     public function fetchSeriesIds(): array
     {
-        $result = $this->connection->query("SELECT id FROM category WHERE type = 'series'");
-        $ids = [];
-        while ($row = $result->fetch_assoc()) {
-            $ids[] = (int) $row['id'];
-        }
-        $result->free();
-
-        return $ids;
+        return array_map(
+            static fn (object $row): int => (int) $row->id,
+            $this->connection->select("SELECT id FROM category WHERE type = 'series'")
+        );
     }
 
     /**
@@ -222,14 +168,10 @@ final class CatalogCsvRepository
      */
     public function fetchCategoryIds(): array
     {
-        $result = $this->connection->query("SELECT id FROM category WHERE type = 'category'");
-        $ids = [];
-        while ($row = $result->fetch_assoc()) {
-            $ids[] = (int) $row['id'];
-        }
-        $result->free();
-
-        return $ids;
+        return array_map(
+            static fn (object $row): int => (int) $row->id,
+            $this->connection->select("SELECT id FROM category WHERE type = 'category'")
+        );
     }
 
     /**
@@ -244,11 +186,7 @@ final class CatalogCsvRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->connection->prepare("DELETE FROM product WHERE id IN ($placeholders)");
-        $types = str_repeat('i', count($ids));
-        $stmt->bind_param($types, ...$ids);
-        $stmt->execute();
-        $stmt->close();
+        $this->connection->delete("DELETE FROM product WHERE id IN ($placeholders)", array_map('intval', $ids));
     }
 
     /**
@@ -263,13 +201,10 @@ final class CatalogCsvRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->connection->prepare(
-            "DELETE FROM category WHERE type = 'series' AND id IN ($placeholders)"
+        $this->connection->delete(
+            "DELETE FROM category WHERE type = 'series' AND id IN ($placeholders)",
+            array_map('intval', $ids)
         );
-        $types = str_repeat('i', count($ids));
-        $stmt->bind_param($types, ...$ids);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -284,13 +219,10 @@ final class CatalogCsvRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->connection->prepare(
-            "DELETE FROM category WHERE type = 'category' AND id IN ($placeholders)"
+        $this->connection->delete(
+            "DELETE FROM category WHERE type = 'category' AND id IN ($placeholders)",
+            array_map('intval', $ids)
         );
-        $types = str_repeat('i', count($ids));
-        $stmt->bind_param($types, ...$ids);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -300,16 +232,7 @@ final class CatalogCsvRepository
      */
     public function fetchCategoryRows(): array
     {
-        $result = $this->connection->query(
-            'SELECT id, parent_id, name, type, display_order FROM category'
-        );
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $result->free();
-
-        return $rows;
+        return $this->selectAll('SELECT id, parent_id, name, type, display_order FROM category');
     }
 
     /**
@@ -319,23 +242,16 @@ final class CatalogCsvRepository
      */
     public function fetchCustomFieldKeys(string $scope): array
     {
-        $stmt = $this->connection->prepare(
+        $rows = $this->connection->select(
             'SELECT field_key, MIN(sort_order) AS sort_order
              FROM series_custom_field
              WHERE field_scope = ?
              GROUP BY field_key
-             ORDER BY sort_order, field_key'
+             ORDER BY sort_order, field_key',
+            [$scope]
         );
-        $stmt->bind_param('s', $scope);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $keys = [];
-        while ($row = $result->fetch_assoc()) {
-            $keys[] = (string) $row['field_key'];
-        }
-        $stmt->close();
 
-        return $keys;
+        return array_map(static fn (object $row): string => (string) $row->field_key, $rows);
     }
 
     /**
@@ -349,14 +265,8 @@ final class CatalogCsvRepository
                 FROM product p
                 INNER JOIN category s ON s.id = p.series_id
                 ORDER BY s.name, p.sku';
-        $result = $this->connection->query($sql);
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $result->free();
 
-        return $rows;
+        return $this->selectAll($sql);
     }
 
     /**
@@ -369,14 +279,8 @@ final class CatalogCsvRepository
         $sql = 'SELECT pcv.product_id, scf.field_key, pcv.value
                 FROM product_custom_field_value pcv
                 INNER JOIN series_custom_field scf ON scf.id = pcv.series_custom_field_id';
-        $result = $this->connection->query($sql);
-        $rows = [];
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-        $result->free();
 
-        return $rows;
+        return $this->selectAll($sql);
     }
 
     /**
@@ -384,14 +288,48 @@ final class CatalogCsvRepository
      */
     public function isTruncateInProgress(): bool
     {
-        $stmt = $this->connection->prepare('SELECT IS_USED_LOCK(?) AS lock_owner');
         $lockKey = Config::get('app')['truncate']['lock_key'];
-        $stmt->bind_param('s', $lockKey);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result->fetch_assoc();
-        $stmt->close();
+        $row = $this->connection->selectOne('SELECT IS_USED_LOCK(?) AS lock_owner', [$lockKey]);
 
-        return ($row['lock_owner'] ?? null) !== null;
+        return ($row->lock_owner ?? null) !== null;
+    }
+
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->connection->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
+        }
+
+        return (int) $this->connection->getPdo()->lastInsertId();
+    }
+
+    /**
+     * Fetches an optional repository-owned row.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function selectOne(string $sql, array $bindings = []): ?array
+    {
+        $row = $this->connection->selectOne($sql, $bindings);
+
+        return $row === null ? null : (array) $row;
+    }
+
+    /**
+     * Fetches rows for a repository-owned query.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function selectAll(string $sql, array $bindings = []): array
+    {
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->connection->select($sql, $bindings)
+        );
     }
 }

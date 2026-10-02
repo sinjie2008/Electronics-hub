@@ -111,6 +111,19 @@ it('discovers real IAM and System Filament components through coolsam modules', 
         ->and($panel->getPages())->toContain(ModuleManagement::class);
 });
 
+it('returns 404 for disabled Catalog routes and absent Filament redesigns even for a Super Admin', function (string $path) {
+    $this->actingAs($this->actor)->get($path)->assertNotFound();
+})->with([
+    'catalog page' => '/catalog/catalog_ui.html',
+    'legacy catalog API' => '/catalog.php?action=v1.category.list',
+    'legacy Typst API' => '/api/typst/templates.php',
+    'admin categories and series' => '/admin/nodes/catalog-nodes',
+    'admin products' => '/admin/products/catalog-products',
+    'admin series fields' => '/admin/series-fields',
+    'admin Typst templates' => '/admin/typst-templates',
+    'admin LaTeX templates' => '/admin/latex-templates',
+]);
+
 it('discovers optional module resources only while that module is enabled', function () {
     require_once base_path('tests/Fixtures/modules/Optional/app/Filament/Resources/OptionalResource.php');
     $disabled = Panel::make()->id('disabled-optional-test');

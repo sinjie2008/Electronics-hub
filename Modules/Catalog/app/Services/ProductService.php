@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Repositories\ProductRepository;
-use mysqli;
 use Throwable;
 
 final class ProductService
@@ -14,7 +14,7 @@ final class ProductService
     private ProductRepository $repository;
 
     public function __construct(
-        private mysqli $connection,
+        private Connection $connection,
         private SeriesFieldService $seriesFieldService,
         private MediaStorageService $mediaStorageService
     ) {
@@ -180,7 +180,7 @@ final class ProductService
         $newFiles = [];
         $deleteAfterCommit = [];
 
-        $this->connection->begin_transaction();
+        $this->connection->beginTransaction();
         try {
             if ($productId !== null) {
                 $this->repository->updateProduct($sku, $name, $description, $productId, $seriesId);
@@ -210,7 +210,7 @@ final class ProductService
 
             $this->connection->commit();
         } catch (Throwable $exception) {
-            $this->connection->rollback();
+            $this->connection->rollBack();
             foreach ($newFiles as $path) {
                 $this->mediaStorageService->deleteFile($path);
             }

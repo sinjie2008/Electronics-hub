@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
-use Laravel\Passport\Passport;
 use Modules\IAM\Models\Permission;
 use Modules\System\Services\OAuthClientManager;
 use phpseclib4\Crypt\RSA;
@@ -333,26 +332,11 @@ final class PassportSearchTest extends TestCase
 
     private function configurePassportKeys(): void
     {
-        $directory = storage_path('framework/testing/passport');
+        $key = RSA::createKey(2048);
 
-        if (! is_dir($directory)) {
-            mkdir($directory, 0700, true);
-        }
-
-        $privateKeyPath = $directory.'/oauth-private.key';
-        $publicKeyPath = $directory.'/oauth-public.key';
-
-        if (! file_exists($privateKeyPath) || ! file_exists($publicKeyPath)) {
-            $key = RSA::createKey(2048);
-
-            file_put_contents($privateKeyPath, (string) $key);
-            file_put_contents($publicKeyPath, (string) $key->getPublicKey());
-            chmod($privateKeyPath, 0600);
-            chmod($publicKeyPath, 0600);
-        }
-
-        chmod($privateKeyPath, 0600);
-        chmod($publicKeyPath, 0600);
-        Passport::loadKeysFrom($directory);
+        config([
+            'passport.private_key' => (string) $key,
+            'passport.public_key' => (string) $key->getPublicKey(),
+        ]);
     }
 }

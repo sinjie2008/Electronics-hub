@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Services;
 
+use Illuminate\Database\Connection;
 use Modules\Catalog\Repositories\CatalogRepository;
 use Modules\Catalog\Support\Db;
-use mysqli;
 
 /**
  * Catalog application queries and response-shape mapping for hierarchy/search APIs.
@@ -18,7 +18,7 @@ final class CatalogService
     /**
      * Create the catalog service with injectable persistence.
      */
-    public function __construct(?mysqli $db = null, ?CatalogRepository $catalog = null)
+    public function __construct(?Connection $db = null, ?CatalogRepository $catalog = null)
     {
         $this->catalog = $catalog ?? new CatalogRepository($db ?? Db::connection());
     }

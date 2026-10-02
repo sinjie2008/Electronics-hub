@@ -27,15 +27,10 @@ jobs:
       DB_PORT: 3306
       DB_DATABASE: boilerplate_testing
       DB_USERNAME: boilerplate
+      CATALOG_CONNECTION: mysql
+      CATALOG_TYPST_BIN: typst
+      CATALOG_PDFLATEX_BIN: pdflatex
       DB_PASSWORD: test-only
-      CATALOG_DB_CONNECTION: catalog
-      CATALOG_DB_HOST: 127.0.0.1
-      CATALOG_DB_PORT: 3306
-      CATALOG_DB_DATABASE: catalog_testing
-      CATALOG_DB_USERNAME: boilerplate
-      CATALOG_DB_PASSWORD: test-only
-      CATALOG_DB_SOCKET: ""
-      MYSQL_TEST_ROOT_PASSWORD: root-test-only
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
       CACHE_STORE: array
@@ -44,7 +39,6 @@ jobs:
       BCRYPT_ROUNDS: 4
       TELESCOPE_ENABLED: false
       RUN_REDIS_INTEGRATION: true
-      RUN_CATALOG_COMPILER_INTEGRATION: true
 
     services:
       mysql:
@@ -80,7 +74,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: bcmath, curl, dom, fileinfo, intl, mbstring, mysqli, pcntl, pdo_mysql, redis, simplexml, sodium, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, intl, mbstring, pcntl, pdo_mysql, redis, simplexml, sodium, xml, zip
           tools: composer:v2
           coverage: none
 
@@ -89,9 +83,6 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            Modules/Catalog/package-lock.json
 
       - name: Install MySQL backup, archive, and Catalog PDF tools
         run: |
@@ -103,22 +94,6 @@ jobs:
           sudo install "$RUNNER_TEMP/typst-x86_64-unknown-linux-musl/typst" /usr/local/bin/typst
           typst --version
           pdflatex --version
-
-      - name: Create disposable Catalog database
-        run: |
-          cat > "$RUNNER_TEMP/mysql-admin.cnf" <<EOF
-          [client]
-          host=$DB_HOST
-          port=$DB_PORT
-          user=root
-          password=$MYSQL_TEST_ROOT_PASSWORD
-          EOF
-          chmod 600 "$RUNNER_TEMP/mysql-admin.cnf"
-          mysql --defaults-extra-file="$RUNNER_TEMP/mysql-admin.cnf" <<'SQL'
-          CREATE DATABASE IF NOT EXISTS catalog_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-          GRANT ALL PRIVILEGES ON catalog_testing.* TO 'boilerplate'@'%';
-          FLUSH PRIVILEGES;
-          SQL
 
       - name: Validate Composer files
         run: composer validate --strict
@@ -134,12 +109,6 @@ jobs:
           npm ci
           npm run build
 
-      - name: Install and build Catalog assets
-        working-directory: Modules/Catalog
-        run: |
-          npm ci
-          npm run build:assets
-
       - name: Check generated Catalog assets are current
         run: git diff --exit-code -- Modules/Catalog/public/assets
 
@@ -150,16 +119,12 @@ jobs:
           php artisan passport:keys --force
 
       - name: Exercise migrations and seeded baseline
-        run: |
-          php artisan migrate:fresh --seed --force
-          php artisan module:migrate Catalog --database=catalog --force
-          php artisan db:seed --class='Modules\Catalog\Database\Seeders\CatalogDatabaseSeeder' --database=catalog --force
+        run: php artisan migrate:fresh --seed --force
 
       - name: Inspect app, routes, and modules
         run: |
           php artisan about --only=environment
           php artisan route:list --except-vendor
-          php artisan route:list --path=catalog | grep -F 'catalog/'
           php artisan module:list
 
       - name: Verify framework and Filament caches

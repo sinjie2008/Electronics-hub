@@ -13,6 +13,7 @@ use Modules\Catalog\Http\Controllers\PageController;
 use Modules\Catalog\Http\Controllers\SpecSearchController;
 use Modules\Catalog\Http\Controllers\StorageController;
 use Modules\Catalog\Http\Controllers\TypstController;
+use Modules\Catalog\Http\Middleware\CatalogAccess;
 use Modules\Catalog\Http\Middleware\ModuleEnabled;
 
 /** Compatibility route definitions; every action receives a native Request. */
@@ -112,11 +113,14 @@ final class ModuleRoutes
                 } elseif ($rootTypst && $path === 'api/typst/variables.php') {
                     $handler = [TypstController::class, 'legacyVariables'];
                 }
-                Route::any($path, $handler)->defaults('catalog_mount', $prefix)
+                $guard = $prefix === '' && str_starts_with($path, 'api/') ? 'api' : 'web';
+                Route::any($path, $handler)->middleware([$guard === 'api' ? 'api' : 'web', CatalogAccess::class])
+                    ->defaults('catalog_guard', $guard)->defaults('catalog_mount', $prefix)
                     ->name($namePrefix.str_replace(['/', '.'], ['.', '-'], $path));
             }
             foreach (self::PAGES as $page) {
                 Route::match(['GET', 'HEAD'], $page, [PageController::class, 'show'])
+                    ->middleware(['web', CatalogAccess::class])
                     ->defaults('catalog_page', substr($page, 0, -5))->defaults('catalog_mount', $prefix)
                     ->name($namePrefix.substr($page, 0, -5));
             }

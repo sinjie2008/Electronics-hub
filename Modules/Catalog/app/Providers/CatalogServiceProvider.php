@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Providers;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
 use Modules\Catalog\Http\Controllers\CatalogController;
 use Modules\Catalog\Http\Controllers\CatalogOperationsController;
 use Modules\Catalog\Http\Controllers\CatalogReadController;
@@ -14,12 +16,7 @@ use Modules\Catalog\Http\Controllers\TypstController;
 use Modules\Catalog\Http\HttpRequestReader;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Http\RequestInput;
-use Modules\Catalog\Models\CatalogNode;
-use Modules\Catalog\Models\CatalogProduct;
-use Modules\Catalog\Models\LatexTemplate;
-use Modules\Catalog\Models\SeriesField;
-use Modules\Catalog\Models\TypstTemplate;
-use Modules\Catalog\Policies\CatalogPolicy;
+use Modules\Catalog\Services\CatalogBootstrapService;
 use Modules\Catalog\Services\CatalogCsvService;
 use Modules\Catalog\Services\CatalogService;
 use Modules\Catalog\Services\CatalogTruncateService;
@@ -37,25 +34,23 @@ use Modules\Catalog\Services\SpecSearchService;
 use Modules\Catalog\Services\TypstService;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
-use Nwidart\Modules\Support\ModuleServiceProvider;
 
 /** Loaded exclusively by nWidart when Catalog is enabled. */
-final class CatalogServiceProvider extends ModuleServiceProvider
+final class CatalogServiceProvider extends ServiceProvider
 {
-    protected string $name = 'Catalog';
-
-    protected string $nameLower = 'catalog';
-
-    protected array $providers = [RouteServiceProvider::class];
-
     public function register(): void
     {
         if (! $this->app->configurationIsCached()) {
             $defaults = require dirname(__DIR__, 2).'/config/config.php';
             $settings = Config::combine($defaults, (array) config('catalog', []));
             $this->app['config']->set('catalog', $settings);
+            if (config('catalog.connection') === 'default') {
+                $this->app['config']->set('catalog.connection', config('database.default'));
+            }
+            if (config('catalog.connection') === 'catalog') {
+                $this->app['config']->set('database.connections.catalog', config('catalog.database'));
+            }
         }
-        $this->app->scoped('catalog.connection', fn () => Db::fromHost());
         $this->app->scoped(RequestInput::class, function ($app): RequestInput {
             $input = new RequestInput($app['request']);
             $app->refresh('request', $input, 'setRequest');
@@ -65,19 +60,19 @@ final class CatalogServiceProvider extends ModuleServiceProvider
         foreach ([
             CatalogService::class, SpecSearchService::class, LatexService::class, TypstService::class,
             HierarchyService::class, SeriesFieldService::class, MediaStorageService::class,
-            CatalogTruncateService::class, LatexTemplateService::class,
+            CatalogTruncateService::class, LatexTemplateService::class, CatalogBootstrapService::class,
         ] as $service) {
-            $this->app->scoped($service, fn ($app) => new $service($app->make('catalog.connection')));
+            $this->app->scoped($service, fn ($app) => new $service(Db::connection()));
         }
         $this->app->scoped(LegacySpecSearchService::class, fn () => new LegacySpecSearchService);
         $this->app->scoped(SeriesAttributeService::class, fn ($app) => new SeriesAttributeService(
-            $app->make('catalog.connection'), $app->make(SeriesFieldService::class), $app->make(MediaStorageService::class)
+            Db::connection(), $app->make(SeriesFieldService::class), $app->make(MediaStorageService::class)
         ));
         $this->app->scoped(ProductService::class, fn ($app) => new ProductService(
-            $app->make('catalog.connection'), $app->make(SeriesFieldService::class), $app->make(MediaStorageService::class)
+            Db::connection(), $app->make(SeriesFieldService::class), $app->make(MediaStorageService::class)
         ));
         $this->app->scoped(CatalogCsvService::class, fn ($app) => new CatalogCsvService(
-            $app->make('catalog.connection'), $app->make(SeriesFieldService::class)
+            Db::connection(), $app->make(SeriesFieldService::class)
         ));
         $this->app->scoped(PublicCatalogService::class, fn ($app) => new PublicCatalogService(
             $app->make(HierarchyService::class), $app->make(SeriesFieldService::class),
@@ -88,15 +83,18 @@ final class CatalogServiceProvider extends ModuleServiceProvider
             Config::get('app')['storage']['latex_pdfs'],
             Config::get('app')['storage']['latex_build']
         ));
-        $this->app->bind(CatalogController::class, fn ($app) => new CatalogController(
-            $app->make(RequestInput::class), $app->make('catalog.connection'), new HttpResponder,
-            $app->make(HttpRequestReader::class), $app->make(MediaStorageService::class),
-            $app->make(HierarchyService::class), $app->make(SeriesFieldService::class),
-            $app->make(SeriesAttributeService::class), $app->make(ProductService::class),
-            $app->make(CatalogCsvService::class), $app->make(CatalogTruncateService::class),
-            $app->make(PublicCatalogService::class), $app->make(LegacySpecSearchService::class),
-            $app->make(LatexTemplateService::class), $app->make(LatexBuildService::class)
-        ));
+        $this->app->bind(CatalogController::class, function ($app): CatalogController {
+            return new CatalogController(
+                $app->make(RequestInput::class), Db::connection(), new HttpResponder,
+                $app->make(HttpRequestReader::class), $app->make(MediaStorageService::class),
+                $app->make(HierarchyService::class), $app->make(SeriesFieldService::class),
+                $app->make(SeriesAttributeService::class), $app->make(ProductService::class),
+                $app->make(CatalogCsvService::class), $app->make(CatalogTruncateService::class),
+                $app->make(PublicCatalogService::class), $app->make(LegacySpecSearchService::class),
+                $app->make(LatexTemplateService::class), $app->make(LatexBuildService::class),
+                $app->make(CatalogBootstrapService::class)
+            );
+        });
         foreach ([
             CatalogReadController::class => CatalogService::class,
             SpecSearchController::class => SpecSearchService::class,
@@ -110,7 +108,7 @@ final class CatalogServiceProvider extends ModuleServiceProvider
         $this->app->bind(CatalogOperationsController::class, fn ($app) => new CatalogOperationsController(
             $app->make(RequestInput::class), fn () => $app->make(CatalogController::class)
         ));
-        parent::register();
+        $this->app->register(RouteServiceProvider::class);
     }
 
     /** Host values take precedence over defaults, including when config is cached. */
@@ -121,17 +119,26 @@ final class CatalogServiceProvider extends ModuleServiceProvider
 
     public function boot(): void
     {
-        // The parent auto-loads migrations into the host ledger, which is incorrect for Catalog.
-        $this->registerCommands();
-        $this->registerCommandSchedules();
-        $this->registerTranslations();
+        $this->loadViewsFrom(dirname(__DIR__, 2).'/resources/views', 'catalog');
         $this->registerConfig();
-        $this->registerViews();
-        foreach ([CatalogNode::class, CatalogProduct::class, SeriesField::class, TypstTemplate::class, LatexTemplate::class] as $model) {
-            Gate::policy($model, CatalogPolicy::class);
+        $this->registerBackupSources();
+        foreach (['view', 'manage', 'csv', 'templates', 'truncate'] as $ability) {
+            Gate::define('catalog.'.$ability, fn (User $user): bool => $user->is_active && $user->checkPermissionTo('catalog.'.$ability, 'web'));
         }
-        $this->publishes([
-            dirname(__DIR__, 2).'/public/assets' => public_path('modules/catalog/assets'),
-        ], 'catalog-assets');
+    }
+
+    private function registerBackupSources(): void
+    {
+        $storage = config('catalog.storage_root') ?: storage_path('app/catalog');
+        $databases = (array) config('backup.backup.source.databases', []);
+        $directories = (array) config('backup.backup.source.files.include', []);
+        $excludedDirectories = (array) config('backup.backup.source.files.exclude', []);
+        config([
+            'backup.backup.source.databases' => array_values(array_unique([...$databases, config('catalog.connection')])),
+            'backup.backup.source.files.include' => array_values(array_unique([...$directories, $storage])),
+            'backup.backup.source.files.exclude' => array_values(array_unique([
+                ...$excludedDirectories, $storage.'/latex-build', $storage.'/typst-build',
+            ])),
+        ]);
     }
 }

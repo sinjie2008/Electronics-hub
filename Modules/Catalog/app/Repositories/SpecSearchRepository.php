@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Executes the catalog queries needed by specification search.
  */
 final class SpecSearchRepository
 {
-    private mysqli $db;
+    private Connection $db;
 
     /**
      * Create the repository with the application's database connection.
      */
-    public function __construct(mysqli $db)
+    public function __construct(Connection $db)
     {
         $this->db = $db;
     }
@@ -40,15 +40,10 @@ final class SpecSearchRepository
      */
     public function getChildCategories(int $parentId): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT id, name FROM category WHERE parent_id = ? AND type = 'category' ORDER BY display_order ASC"
+        return $this->fetchAll(
+            "SELECT id, name FROM category WHERE parent_id = ? AND type = 'category' ORDER BY display_order ASC",
+            [$parentId]
         );
-        $stmt->bind_param('i', $parentId);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -137,18 +132,18 @@ final class SpecSearchRepository
             return [];
         }
 
-        $ids = $this->idList($categoryIds);
+        $ids = implode(',', array_fill(0, count($categoryIds), '?'));
         $sql = "SELECT p.id, p.sku, p.name, s.name as series_name, s.id as series_id, c.name as category_name, c.id as category_id
                 FROM product p
                 JOIN category s ON p.series_id = s.id
                 JOIN category c ON s.parent_id = c.id
                 WHERE s.parent_id IN ({$ids}) AND s.type = 'series'";
 
+        $bindings = array_map('intval', $categoryIds);
         if (isset($filters['series']) && ! empty($filters['series'])) {
-            $seriesNames = array_map(function (string $value): string {
-                return "'".$this->db->real_escape_string($value)."'";
-            }, $filters['series']);
-            $sql .= ' AND s.name IN ('.implode(',', $seriesNames).')';
+            $seriesPlaceholders = implode(',', array_fill(0, count($filters['series']), '?'));
+            $sql .= ' AND s.name IN ('.$seriesPlaceholders.')';
+            array_push($bindings, ...array_map('strval', $filters['series']));
         }
 
         foreach ($filters as $key => $values) {
@@ -156,21 +151,20 @@ final class SpecSearchRepository
                 continue;
             }
 
-            $escapedValues = array_map(function (string $value): string {
-                return "'".$this->db->real_escape_string($value)."'";
-            }, $values);
-            $fieldKey = $this->db->real_escape_string($key);
+            $valuePlaceholders = implode(',', array_fill(0, count($values), '?'));
             $sql .= " AND EXISTS (
                 SELECT 1 FROM product_custom_field_value pcfv
                 JOIN series_custom_field scf ON pcfv.series_custom_field_id = scf.id
                 WHERE pcfv.product_id = p.id
-                AND scf.field_key = '{$fieldKey}'
-                AND pcfv.value IN (".implode(',', $escapedValues).'))';
+                AND scf.field_key = ?
+                AND pcfv.value IN ({$valuePlaceholders}))";
+            $bindings[] = (string) $key;
+            array_push($bindings, ...array_map('strval', $values));
         }
 
         $sql .= ' LIMIT 500';
 
-        return $this->fetchAll($sql);
+        return $this->fetchAll($sql, $bindings);
     }
 
     /**
@@ -186,19 +180,15 @@ final class SpecSearchRepository
         }
 
         $ids = $this->idList($seriesIds);
-        $stmt = $this->db->prepare(
+
+        return $this->fetchAll(
             "SELECT scf.series_id, scfv.value
              FROM series_custom_field scf
              LEFT JOIN series_custom_field_value scfv ON scf.id = scfv.series_custom_field_id AND scfv.series_id = scf.series_id
              WHERE scf.series_id IN ({$ids})
-               AND scf.field_scope = 'series_metadata' AND scf.field_key = ?"
+               AND scf.field_scope = 'series_metadata' AND scf.field_key = ?",
+            [$fieldKey]
         );
-        $stmt->bind_param('s', $fieldKey);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
     }
 
     /**
@@ -261,13 +251,12 @@ final class SpecSearchRepository
      *
      * @return list<array<string, mixed>>
      */
-    private function fetchAll(string $sql): array
+    private function fetchAll(string $sql, array $bindings = []): array
     {
-        $result = $this->db->query($sql);
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
-        $result->close();
-
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select($sql, $bindings)
+        );
     }
 
     /**

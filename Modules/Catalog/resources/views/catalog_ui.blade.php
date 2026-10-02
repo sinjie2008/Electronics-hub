@@ -2,16 +2,17 @@
 <html lang="en">
 
 <head>
-    <base href="{{ $catalogBaseUrl }}/">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Product Catalog Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] }}">
-    <link rel="stylesheet" href="assets/css/catalog_ui.css?v={{ $catalogAssetVersions['css/catalog_ui.css'] }}">
+    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] ?? '' }}">
+    <link rel="stylesheet" href="assets/css/catalog_ui.css?v={{ $catalogAssetVersions['css/catalog_ui.css'] ?? '' }}">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
 </head>
 
 <body data-logging-enabled="true">
@@ -307,10 +308,10 @@
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] }}"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] }}"></script>
-    <script type="module" src="assets/js/catalog_ui.js?v={{ $catalogAssetVersions['js/catalog_ui.js'] }}"></script>
+    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] ?? '' }}"></script>
+    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
+    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
+    <script type="module" src="assets/js/catalog_ui.js?v={{ $catalogAssetVersions['js/catalog_ui.js'] ?? '' }}"></script>
 </body>
 
 </html>

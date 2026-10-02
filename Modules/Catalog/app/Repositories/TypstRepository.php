@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Repositories;
 
-use mysqli;
+use Illuminate\Database\Connection;
 
 /**
  * Handles Typst template, preference, variable, and compilation-data persistence.
  */
 final class TypstRepository
 {
-    private mysqli $db;
+    private Connection $db;
 
     /**
-     * Use the schema installed by the module migration.
+     * Create the repository with the module's configured database connection.
      */
-    public function __construct(mysqli $db)
+    public function __construct(Connection $db)
     {
         $this->db = $db;
     }
@@ -45,7 +45,6 @@ final class TypstRepository
         return $this->findOne(
             'SELECT id, title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM typst_templates WHERE id = ? AND is_global = 1 LIMIT 1',
-            'i',
             [$id]
         );
     }
@@ -55,17 +54,13 @@ final class TypstRepository
      */
     public function insertGlobalTemplate(string $title, string $description, string $code, ?string $pdfPath): int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO typst_templates (title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at)
-             VALUES (?, ?, ?, 1, NULL, ?, ?)'
-        );
         $generatedAt = $pdfPath ? date('Y-m-d H:i:s') : null;
-        $stmt->bind_param('sssss', $title, $description, $code, $pdfPath, $generatedAt);
-        $stmt->execute();
-        $id = (int) $this->db->insert_id;
-        $stmt->close();
 
-        return $id;
+        return $this->insertId(
+            'INSERT INTO typst_templates (title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at)
+             VALUES (?, ?, ?, 1, NULL, ?, ?)',
+            [$title, $description, $code, $pdfPath, $generatedAt]
+        );
     }
 
     /**
@@ -75,21 +70,14 @@ final class TypstRepository
     {
         $sql = 'UPDATE typst_templates SET title = ?, description = ?, typst_content = ?, updated_at = CURRENT_TIMESTAMP';
         $params = [$title, $description, $code];
-        $types = 'sss';
         if ($pdfPath !== null) {
             $sql .= ', last_pdf_path = ?, last_pdf_generated_at = ?';
             $params[] = $pdfPath;
             $params[] = date('Y-m-d H:i:s');
-            $types .= 'ss';
         }
         $sql .= ' WHERE id = ? AND is_global = 1';
         $params[] = $id;
-        $types .= 'i';
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $stmt->close();
+        $this->db->update($sql, $params);
     }
 
     /**
@@ -97,7 +85,7 @@ final class TypstRepository
      */
     public function deleteGlobalTemplate(int $id): bool
     {
-        return $this->execute('DELETE FROM typst_templates WHERE id = ? AND is_global = 1 LIMIT 1', 'i', [$id]);
+        return $this->execute('DELETE FROM typst_templates WHERE id = ? AND is_global = 1 LIMIT 1', [$id]);
     }
 
     /**
@@ -111,7 +99,6 @@ final class TypstRepository
             'SELECT id, title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM typst_templates WHERE series_id = ? OR (is_global = 1 AND (series_id IS NULL OR series_id = 0))
              ORDER BY is_global DESC, updated_at DESC',
-            'i',
             [$seriesId]
         );
     }
@@ -126,7 +113,6 @@ final class TypstRepository
         return $this->findOne(
             'SELECT id, title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at, created_at, updated_at
              FROM typst_templates WHERE id = ? LIMIT 1',
-            'i',
             [$id]
         );
     }
@@ -136,17 +122,13 @@ final class TypstRepository
      */
     public function insertSeriesTemplate(int $seriesId, string $title, string $description, string $code, ?string $pdfPath): int
     {
-        $stmt = $this->db->prepare(
-            'INSERT INTO typst_templates (title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at)
-             VALUES (?, ?, ?, 0, ?, ?, ?)'
-        );
         $generatedAt = $pdfPath ? date('Y-m-d H:i:s') : null;
-        $stmt->bind_param('sssiss', $title, $description, $code, $seriesId, $pdfPath, $generatedAt);
-        $stmt->execute();
-        $id = (int) $this->db->insert_id;
-        $stmt->close();
 
-        return $id;
+        return $this->insertId(
+            'INSERT INTO typst_templates (title, description, typst_content, is_global, series_id, last_pdf_path, last_pdf_generated_at)
+             VALUES (?, ?, ?, 0, ?, ?, ?)',
+            [$title, $description, $code, $seriesId, $pdfPath, $generatedAt]
+        );
     }
 
     /**
@@ -156,22 +138,15 @@ final class TypstRepository
     {
         $sql = 'UPDATE typst_templates SET title = ?, description = ?, typst_content = ?, updated_at = CURRENT_TIMESTAMP';
         $params = [$title, $description, $code];
-        $types = 'sss';
         if ($pdfPath !== null) {
             $sql .= ', last_pdf_path = ?, last_pdf_generated_at = ?';
             $params[] = $pdfPath;
             $params[] = date('Y-m-d H:i:s');
-            $types .= 'ss';
         }
         $sql .= ' WHERE id = ? AND series_id = ?';
         $params[] = $id;
         $params[] = $seriesId;
-        $types .= 'ii';
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $stmt->close();
+        $this->db->update($sql, $params);
     }
 
     /**
@@ -179,7 +154,7 @@ final class TypstRepository
      */
     public function deleteTemplate(int $id): bool
     {
-        return $this->execute('DELETE FROM typst_templates WHERE id = ? LIMIT 1', 'i', [$id]);
+        return $this->execute('DELETE FROM typst_templates WHERE id = ? LIMIT 1', [$id]);
     }
 
     /**
@@ -191,7 +166,6 @@ final class TypstRepository
     {
         return $this->findOne(
             'SELECT last_global_template_id FROM typst_series_preferences WHERE series_id = ? LIMIT 1',
-            'i',
             [$seriesId]
         );
     }
@@ -201,14 +175,12 @@ final class TypstRepository
      */
     public function saveSeriesPreference(int $seriesId, ?int $templateId): void
     {
-        $stmt = $this->db->prepare(
+        $this->db->statement(
             'INSERT INTO typst_series_preferences (series_id, last_global_template_id, updated_at)
              VALUES (?, ?, CURRENT_TIMESTAMP)
-             ON DUPLICATE KEY UPDATE last_global_template_id = VALUES(last_global_template_id), updated_at = CURRENT_TIMESTAMP'
+             ON DUPLICATE KEY UPDATE last_global_template_id = VALUES(last_global_template_id), updated_at = CURRENT_TIMESTAMP',
+            [$seriesId, $templateId]
         );
-        $stmt->bind_param('ii', $seriesId, $templateId);
-        $stmt->execute();
-        $stmt->close();
     }
 
     /**
@@ -234,7 +206,6 @@ final class TypstRepository
         return $this->fetchAll(
             'SELECT id, field_key, field_type, field_value, is_global, series_id, created_at, updated_at
              FROM typst_variables WHERE is_global = 0 AND series_id = ? ORDER BY field_key ASC',
-            'i',
             [$seriesId]
         );
     }
@@ -249,30 +220,22 @@ final class TypstRepository
         if ($id) {
             $sql = 'UPDATE typst_variables SET field_key = ?, field_type = ?, field_value = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ? AND is_global = ?';
-            $types = 'sssii';
             $params = [$key, $type, $value, $id, $isGlobal ? 1 : 0];
             if (! $isGlobal) {
                 $sql .= ' AND series_id = ?';
-                $types .= 'i';
                 $params[] = $seriesId ?? 0;
             }
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $stmt->close();
+            $this->db->update($sql, $params);
 
             return $this->findVariable($id, $isGlobal, $seriesId);
         }
 
         $isGlobalFlag = $isGlobal ? 1 : 0;
         $seriesValue = $isGlobal ? 0 : ($seriesId ?? 0);
-        $stmt = $this->db->prepare(
-            'INSERT INTO typst_variables (field_key, field_type, field_value, is_global, series_id) VALUES (?, ?, ?, ?, ?)'
+        $newId = $this->insertId(
+            'INSERT INTO typst_variables (field_key, field_type, field_value, is_global, series_id) VALUES (?, ?, ?, ?, ?)',
+            [$key, $type, $value, $isGlobalFlag, $seriesValue]
         );
-        $stmt->bind_param('sssii', $key, $type, $value, $isGlobalFlag, $seriesValue);
-        $stmt->execute();
-        $newId = (int) $this->db->insert_id;
-        $stmt->close();
 
         return $this->findVariable($newId, $isGlobal, $seriesId);
     }
@@ -286,16 +249,14 @@ final class TypstRepository
     {
         $sql = 'SELECT id, field_key, field_type, field_value, is_global, series_id, created_at, updated_at
                 FROM typst_variables WHERE id = ? AND is_global = ?';
-        $types = 'ii';
         $params = [$id, $isGlobal ? 1 : 0];
         if (! $isGlobal) {
             $sql .= ' AND series_id = ?';
-            $types .= 'i';
             $params[] = $seriesId ?? 0;
         }
         $sql .= ' LIMIT 1';
 
-        return $this->findOne($sql, $types, $params);
+        return $this->findOne($sql, $params);
     }
 
     /**
@@ -303,7 +264,7 @@ final class TypstRepository
      */
     public function deleteGlobalVariable(int $id): bool
     {
-        return $this->execute('DELETE FROM typst_variables WHERE id = ? AND is_global = 1 LIMIT 1', 'i', [$id]);
+        return $this->execute('DELETE FROM typst_variables WHERE id = ? AND is_global = 1 LIMIT 1', [$id]);
     }
 
     /**
@@ -313,7 +274,6 @@ final class TypstRepository
     {
         return $this->execute(
             'DELETE FROM typst_variables WHERE id = ? AND is_global = 0 AND series_id = ? LIMIT 1',
-            'ii',
             [$id, $seriesId]
         );
     }
@@ -325,7 +285,7 @@ final class TypstRepository
      */
     public function getSeriesProducts(int $seriesId): array
     {
-        return $this->fetchAll('SELECT id, name, sku FROM product WHERE series_id = ? ORDER BY sku ASC', 'i', [$seriesId]);
+        return $this->fetchAll('SELECT id, name, sku FROM product WHERE series_id = ? ORDER BY sku ASC', [$seriesId]);
     }
 
     /**
@@ -338,7 +298,6 @@ final class TypstRepository
         return $this->fetchAll(
             'SELECT f.field_key, v.value FROM product_custom_field_value v
              JOIN series_custom_field f ON v.series_custom_field_id = f.id WHERE v.product_id = ?',
-            'i',
             [$productId]
         );
     }
@@ -349,17 +308,12 @@ final class TypstRepository
      * @param  list<mixed>  $params
      * @return list<array<string, mixed>>
      */
-    private function fetchAll(string $sql, string $types = '', array $params = []): array
+    private function fetchAll(string $sql, array $params = []): array
     {
-        $stmt = $this->db->prepare($sql);
-        if ($params !== []) {
-            $stmt->bind_param($types, ...$params);
-        }
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows;
+        return array_map(
+            static fn (object $row): array => (array) $row,
+            $this->db->select($sql, $params)
+        );
     }
 
     /**
@@ -368,15 +322,11 @@ final class TypstRepository
      * @param  list<mixed>  $params
      * @return array<string, mixed>|null
      */
-    private function findOne(string $sql, string $types, array $params): ?array
+    private function findOne(string $sql, array $params): ?array
     {
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc() ?: null;
-        $stmt->close();
+        $row = $this->db->selectOne($sql, $params);
 
-        return $row;
+        return $row === null ? null : (array) $row;
     }
 
     /**
@@ -384,12 +334,22 @@ final class TypstRepository
      *
      * @param  list<mixed>  $params
      */
-    private function execute(string $sql, string $types, array $params): bool
+    private function execute(string $sql, array $params): bool
     {
-        $stmt = $this->db->prepare($sql);
-        $result = $stmt->bind_param($types, ...$params) && $stmt->execute();
-        $stmt->close();
+        return $this->db->statement($sql, $params);
+    }
 
-        return $result;
+    /**
+     * Executes a bound insert and returns the generated row ID.
+     *
+     * @param  list<mixed>  $bindings
+     */
+    private function insertId(string $sql, array $bindings): int
+    {
+        if (! $this->db->insert($sql, $bindings)) {
+            throw new \RuntimeException('Failed to execute insert query.');
+        }
+
+        return (int) $this->db->getPdo()->lastInsertId();
     }
 }
