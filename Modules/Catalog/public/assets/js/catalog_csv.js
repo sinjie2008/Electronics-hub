@@ -1,11 +1,14 @@
+import { catalogAjax, catalogGetJson, catalogEndpoint } from './catalog-request.js';
+
 /**
  * catalog_csv.js
  * Dedicated CSV import/export + truncate management page bindings.
  */
 export class CatalogCsvPage {
-    constructor() {
+    constructor(root) {
         'use strict';
-        this.apiBase = 'catalog.php';
+        this.root = root;
+        this.apiBase = catalogEndpoint('catalog.php');
         this.TRUNCATE_TOKEN = 'TRUNCATE';
 
         this.selectors = {
@@ -77,13 +80,13 @@ export class CatalogCsvPage {
             }
         }
 
-        $(this.init);
+
     }
 
     $el(key) {
         const page = this;
         if (!page.domCache.has(key)) {
-            page.domCache.set(key, $(page.selectors[key]));
+            page.domCache.set(key, $(page.root).find(page.selectors[key]));
         }
         return page.domCache.get(key);
     }
@@ -147,14 +150,14 @@ export class CatalogCsvPage {
 
     requestJson(params) {
         const page = this;
-        return page.toPromise($.getJSON(page.apiBase, params), params?.action ?? 'ajax:get');
+        return page.toPromise(catalogGetJson(page.apiBase, params), params?.action ?? 'ajax:get');
     }
 
     postJson(action, payload = {}) {
         const page = this;
 
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `${page.apiBase}?action=${encodeURIComponent(action)}`,
                 method: 'POST',
                 contentType: 'application/json',
@@ -169,7 +172,7 @@ export class CatalogCsvPage {
         const page = this;
 
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `${page.apiBase}?action=${encodeURIComponent(action)}`,
                 method: 'POST',
                 processData: false,
@@ -655,5 +658,3 @@ export class CatalogCsvPage {
         await page.loadCsvHistory();
     }
 }
-
-new CatalogCsvPage();

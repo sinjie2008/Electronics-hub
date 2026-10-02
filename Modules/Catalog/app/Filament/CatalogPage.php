@@ -8,7 +8,6 @@ use Filament\Facades\Filament;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Modules\Catalog\Http\Middleware\ModuleEnabled;
@@ -56,9 +55,17 @@ abstract class CatalogPage extends Page
         );
     }
 
-    public function getHeading(): string|Htmlable|null
+    public function getSubheading(): ?string
     {
-        return null;
+        return match (static::$document) {
+            'catalog_ui' => 'Manage the catalog hierarchy, attributes, and LaTeX exports.',
+            'catalog-csv' => 'Export, import, restore, and audit CSV catalog snapshots.',
+            'spec-search' => 'Find products by category and specification.',
+            'latex-templating' => 'Manage LaTeX templates, preview them live, and export PDFs.',
+            'global_typst_template' => 'Manage global templates and variables using Typst.',
+            'series_typst_template' => 'Generate PDF for a specific series using Typst.',
+            default => null,
+        };
     }
 
     public function getMaxContentWidth(): Width|string|null
@@ -66,9 +73,32 @@ abstract class CatalogPage extends Page
         return Width::Full;
     }
 
-    /** Keep the existing Bootstrap styles and scripts inside their own document. */
-    public function getCatalogContentUrl(): string
+    public function getCatalogPageKey(): string
     {
-        return route('catalog.'.static::$document, Arr::only(request()->query(), self::QUERY_PARAMETERS));
+        return match (static::$document) {
+            'catalog_ui' => 'product-catalog',
+            'catalog-csv' => 'csv',
+            'global_typst_template' => 'global-typst-template',
+            'series_typst_template' => 'series-typst-template',
+            default => static::$document,
+        };
+    }
+
+    public function getCatalogView(): string
+    {
+        return 'catalog::filament.pages.'.$this->getCatalogPageKey();
+    }
+
+    /** @return array{page: string, apiBaseUrl: string, catalogUrl: string, seriesTemplateUrl: string, query: array<string, scalar>, csrfToken: string} */
+    public function getWorkspaceConfiguration(): array
+    {
+        return [
+            'page' => $this->getCatalogPageKey(),
+            'apiBaseUrl' => rtrim(dirname(route('catalog.catalog-php', absolute: false)), '/').'/',
+            'catalogUrl' => Pages\ProductCatalog::getUrl(panel: 'admin'),
+            'seriesTemplateUrl' => Pages\SeriesTypstTemplate::getUrl(panel: 'admin'),
+            'query' => array_filter(Arr::only(request()->query(), self::QUERY_PARAMETERS), is_scalar(...)),
+            'csrfToken' => csrf_token(),
+        ];
     }
 }

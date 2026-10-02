@@ -9,7 +9,12 @@ use Livewire\Livewire;
 use Modules\Catalog\Database\Seeders\CatalogDatabaseSeeder;
 use Modules\Catalog\Filament\CatalogPage;
 use Modules\Catalog\Filament\CatalogPlugin;
+use Modules\Catalog\Filament\Pages\CatalogCsv;
+use Modules\Catalog\Filament\Pages\GlobalTypstTemplate;
+use Modules\Catalog\Filament\Pages\LatexTemplating;
 use Modules\Catalog\Filament\Pages\ProductCatalog;
+use Modules\Catalog\Filament\Pages\SeriesTypstTemplate;
+use Modules\Catalog\Filament\Pages\SpecSearch;
 use Modules\System\Filament\Pages\ModuleManagement;
 use Modules\System\Services\ModuleManager;
 use Nwidart\Modules\Contracts\ActivatorInterface;
@@ -74,48 +79,54 @@ it('keeps Catalog page registration stable while disabled so cached routes can b
     expect(ProductCatalog::canAccess())->toBeTrue();
 });
 
-it('renders each native page with its matching Catalog document in an iframe', function (string $panelPath, string $document): void {
+it('renders each Catalog feature as a native Filament page', function (string $panelPath, string $page, string $controlId): void {
     $actor = catalogFilamentUser($this);
 
     $response = $this->actingAs($actor, 'web')->get($panelPath);
 
-    $response->assertOk()->assertSee('<iframe', false)->assertSee('/catalog/'.$document, false);
-    expect($response->getContent())
-        ->not->toContain('sidebar-panel', 'data-sidebar-toggle', 'sidebar-backdrop', 'Open Navigation', 'sidebar-nav.js');
+    $response->assertOk()
+        ->assertSee('catalog-workspace', false)
+        ->assertSee('data-catalog-page="'.$page.'"', false)
+        ->assertSee('id="'.$controlId.'"', false)
+        ->assertDontSee('<iframe', false)
+        ->assertDontSee('<object', false)
+        ->assertDontSee('<embed', false);
+
+    expect(substr_count($response->getContent(), 'id="fi-main-sidebar"'))->toBe(1);
 })->with([
-    'product catalog' => ['/admin/catalog', 'catalog_ui.html'],
-    'CSV import and export' => ['/admin/catalog/csv', 'catalog-csv.html'],
-    'specification search' => ['/admin/catalog/spec-search', 'spec-search.html'],
-    'LaTeX templating' => ['/admin/catalog/latex-templating', 'latex-templating.html'],
-    'global Typst template' => ['/admin/catalog/global-typst-template', 'global_typst_template.html'],
-    'series Typst template' => ['/admin/catalog/series-typst-template', 'series_typst_template.html'],
+    'product catalog' => ['/admin/catalog', 'product-catalog', 'hierarchy-container'],
+    'CSV import and export' => ['/admin/catalog/csv', 'csv', 'csv-import-form'],
+    'specification search' => ['/admin/catalog/spec-search', 'spec-search', 'root-category-options'],
+    'LaTeX templating' => ['/admin/catalog/latex-templating', 'latex-templating', 'templateForm'],
+    'global Typst template' => ['/admin/catalog/global-typst-template', 'global-typst-template', 'compileBtn'],
+    'series Typst template' => ['/admin/catalog/series-typst-template', 'series-typst-template', 'seriesDetailsContainer'],
 ]);
 
 it('redirects guests from native Catalog pages to the Filament login', function (string $path): void {
     $this->get($path)->assertRedirect('/admin/login');
 })->with([
     'product catalog' => ['/admin/catalog'],
+    'CSV import and export' => ['/admin/catalog/csv'],
     'specification search' => ['/admin/catalog/spec-search'],
+    'LaTeX templating' => ['/admin/catalog/latex-templating'],
+    'global Typst template' => ['/admin/catalog/global-typst-template'],
+    'series Typst template' => ['/admin/catalog/series-typst-template'],
 ]);
 
-it('renders the original feature documents only for iframe requests without a Catalog sidebar', function (string $document): void {
+it('redirects spoofed iframe requests for legacy documents to native Filament pages', function (string $document, string $panelPath): void {
     $actor = catalogFilamentUser($this);
 
-    $response = $this->actingAs($actor, 'web')
+    $this->actingAs($actor, 'web')
         ->withHeader('Sec-Fetch-Dest', 'iframe')
-        ->get('/catalog/'.$document);
-
-    $response->assertOk()->assertSee('csrf-token', false);
-    expect($response->getContent())
-        ->toContain('<html')
-        ->not->toContain('sidebar-panel', 'data-sidebar-toggle', 'data-sidebar-collapse', 'sidebar-backdrop', 'Open Navigation', 'sidebar-nav.js');
+        ->get('/catalog/'.$document)
+        ->assertRedirect($panelPath);
 })->with([
-    'product catalog' => ['catalog_ui.html'],
-    'CSV import and export' => ['catalog-csv.html'],
-    'specification search' => ['spec-search.html'],
-    'LaTeX templating' => ['latex-templating.html'],
-    'global Typst template' => ['global_typst_template.html'],
-    'series Typst template' => ['series_typst_template.html'],
+    'product catalog' => ['catalog_ui.html', '/admin/catalog'],
+    'CSV import and export' => ['catalog-csv.html', '/admin/catalog/csv'],
+    'specification search' => ['spec-search.html', '/admin/catalog/spec-search'],
+    'LaTeX templating' => ['latex-templating.html', '/admin/catalog/latex-templating'],
+    'global Typst template' => ['global_typst_template.html', '/admin/catalog/global-typst-template'],
+    'series Typst template' => ['series_typst_template.html', '/admin/catalog/series-typst-template'],
 ]);
 
 it('redirects direct legacy document visits to the corresponding Filament page', function (string $document, string $panelPath): void {
@@ -134,14 +145,14 @@ it('redirects direct legacy document visits to the corresponding Filament page',
     'series Typst template' => ['series_typst_template.html', '/admin/catalog/series-typst-template'],
 ]);
 
-it('preserves approved Catalog deep-link parameters and drops unrelated query values', function (): void {
+it('preserves approved Catalog deep-link parameters in native pages and drops unrelated values', function (): void {
     $actor = catalogFilamentUser($this);
     $query = [
-        'category' => 'Electrical',
-        'series' => 'XR-40',
-        'product' => 'CAP-40',
-        'series_id' => '42',
-        'seriesId' => '43',
+        'category' => 'native-category-91',
+        'series' => 'native-series-92',
+        'product' => 'native-product-93',
+        'series_id' => '9821',
+        'seriesId' => '9822',
         'unexpected' => 'discard-me',
     ];
 
@@ -155,16 +166,18 @@ it('preserves approved Catalog deep-link parameters and drops unrelated query va
 
     expect(parse_url($location, PHP_URL_PATH))->toBe('/admin/catalog')
         ->and($forwardedQuery)->toBe([
-            'category' => 'Electrical',
-            'series' => 'XR-40',
-            'product' => 'CAP-40',
-            'series_id' => '42',
-            'seriesId' => '43',
+            'category' => 'native-category-91',
+            'series' => 'native-series-92',
+            'product' => 'native-product-93',
+            'series_id' => '9821',
+            'seriesId' => '9822',
         ]);
 
-    $this->get('/admin/catalog?'.http_build_query($query))
-        ->assertSee('/catalog/catalog_ui.html?category=Electrical&amp;series=XR-40&amp;product=CAP-40&amp;series_id=42&amp;seriesId=43', false)
-        ->assertDontSee('discard-me');
+    $nativeResponse = $this->get('/admin/catalog?'.http_build_query($query))->assertOk();
+    foreach (['native-category-91', 'native-series-92', 'native-product-93', '9821', '9822'] as $value) {
+        $nativeResponse->assertSee($value, false);
+    }
+    $nativeResponse->assertDontSee('discard-me');
 
     $seriesResponse = $this->withHeader('Sec-Fetch-Dest', 'document')
         ->get('/catalog/series_typst_template.html?series_id=42&seriesId=43&unexpected=discard-me')
@@ -236,15 +249,27 @@ it('blocks and restores Catalog navigation, pages, iframe documents, and APIs th
 
     $this->actingAs($superAdmin, 'web')->get('/admin')->assertSee('Catalog UI');
     $this->get('/admin/catalog')->assertOk();
-    $this->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/catalog_ui.html')->assertOk();
+    $this->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/catalog_ui.html')->assertRedirect('/admin/catalog');
     $this->getJson('/catalog/catalog.php?action=v1.ping')->assertOk();
-    $livewirePage = Livewire::actingAs($superAdmin, 'web')->test(ProductCatalog::class);
+    $livewirePages = [];
+    foreach ([
+        ProductCatalog::class,
+        CatalogCsv::class,
+        SpecSearch::class,
+        LatexTemplating::class,
+        GlobalTypstTemplate::class,
+        SeriesTypstTemplate::class,
+    ] as $pageClass) {
+        $livewirePages[] = Livewire::actingAs($superAdmin, 'web')->test($pageClass);
+    }
 
     app(ModuleManager::class)->disable($superAdmin, 'Catalog');
 
     $this->get('/admin')->assertDontSee('Catalog UI');
     $this->get('/admin/catalog')->assertNotFound();
-    $livewirePage->call('$refresh')->assertForbidden();
+    foreach ($livewirePages as $livewirePage) {
+        $livewirePage->call('$refresh')->assertForbidden();
+    }
     $this->withHeader('Sec-Fetch-Dest', 'document')->get('/catalog/catalog_ui.html')->assertNotFound();
     $this->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/catalog_ui.html')->assertNotFound();
     $this->getJson('/catalog/catalog.php?action=v1.ping')->assertNotFound();
@@ -253,7 +278,7 @@ it('blocks and restores Catalog navigation, pages, iframe documents, and APIs th
 
     $this->actingAs($superAdmin, 'web')->get('/admin')->assertSee('Catalog UI');
     $this->get('/admin/catalog')->assertOk();
-    $this->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/catalog_ui.html')->assertOk();
+    $this->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/catalog_ui.html')->assertRedirect('/admin/catalog');
     $this->getJson('/catalog/catalog.php?action=v1.ping')->assertOk();
     expect(Module::findOrFail('Catalog')->isEnabled())->toBeTrue();
 });

@@ -1,32 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Product Catalog Manager</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/catalog_ui.css?v={{ $catalogAssetVersions['css/catalog_ui.css'] ?? '' }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
-</head>
-
-<body data-logging-enabled="true">
-    <div class="container-fluid catalog-shell px-0 app-shell">
+<div class="container-fluid catalog-shell px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
 
-            <main class="col-12 content-column">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                    <div>
-                        <h1 class="mb-1">Product Catalog Manager</h1>
-                        <p class="text-muted mb-0">Manage the catalog hierarchy, attributes, and LaTeX exports.</p>
-                    </div>
-                </div>
+            <div class="col-12 content-column">
+
 
                 <div id="status-message-catalog" class="status-message is-empty" role="status" aria-live="polite"></div>
                 <div class="section section-inline row g-0 no-bootstrap-gap">
@@ -54,7 +30,7 @@
                             <div>Display Order: <input type="number" id="create-display-order" name="displayOrder"
                                     value="0">
                             </div>
-                            <div><button type="submit">Add Node</button></div>
+                            <div><x-filament::button color="primary" :loading-indicator="false" type="submit">Add Node</x-filament::button></div>
                         </form>
                     </div>
                     <div class="panel panel-update-node">
@@ -68,8 +44,8 @@
                             <div>Name: <input type="text" id="update-node-name" required></div>
                             <div>Display Order: <input type="number" id="update-node-display-order" value="0"></div>
                             <div class="inline-actions">
-                                <button type="submit" id="node-update-submit">Save Node</button>
-                                <button type="button" id="node-delete-button">Delete Selected Node</button>
+                                <x-filament::button color="primary" :loading-indicator="false" type="submit" id="node-update-submit">Save Node</x-filament::button>
+                                <x-filament::button color="danger" :loading-indicator="false" type="button" id="node-delete-button">Delete Selected Node</x-filament::button>
                             </div>
                         </form>
                     </div>
@@ -85,7 +61,7 @@
                                     Templating</label>
                             </div>
                             <div id="typst-templating-link-container" class="mt-2 d-none">
-                                <a href="#" id="typst-templating-link" target="_blank">Open Series Typst Template</a>
+                                <a href="#" id="typst-templating-link">Open Series Typst Template</a>
                             </div>
                         </div>
                     </div>
@@ -126,8 +102,8 @@
                                 <label class="inline-checkbox"><input type="checkbox" id="series-field-required">
                                     Required</label>
                                 <div class="inline-actions">
-                                    <button type="submit" id="series-field-submit">Save Field</button>
-                                    <button type="button" id="series-field-clear-button">Clear</button>
+                                    <x-filament::button color="primary" :loading-indicator="false" type="submit" id="series-field-submit">Save Field</x-filament::button>
+                                    <x-filament::button color="gray" :loading-indicator="false" type="button" id="series-field-clear-button">Clear</x-filament::button>
                                 </div>
                             </form>
                         </div>
@@ -168,16 +144,16 @@
                                         id="series-metadata-field-required">
                                     Required</label>
                                 <div class="inline-actions">
-                                    <button type="submit" id="series-metadata-field-submit">Save Metadata Field</button>
-                                    <button type="button" id="series-metadata-field-clear-button">Clear</button>
+                                    <x-filament::button color="primary" :loading-indicator="false" type="submit" id="series-metadata-field-submit">Save Metadata Field</x-filament::button>
+                                    <x-filament::button color="gray" :loading-indicator="false" type="button" id="series-metadata-field-clear-button">Clear</x-filament::button>
                                 </div>
                             </form>
                             <h4>Series Metadata Values</h4>
                             <form id="series-metadata-form" class="stacked-form">
                                 <div id="series-metadata-values"></div>
                                 <div class="inline-actions">
-                                    <button type="submit" id="series-metadata-save-button">Save Metadata</button>
-                                    <button type="button" id="series-metadata-reset-button">Reset</button>
+                                    <x-filament::button color="primary" :loading-indicator="false" type="submit" id="series-metadata-save-button">Save Metadata</x-filament::button>
+                                    <x-filament::button color="gray" :loading-indicator="false" type="button" id="series-metadata-reset-button">Reset</x-filament::button>
                                 </div>
                             </form>
                         </div>
@@ -199,7 +175,7 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <button type="button" id="product-delete-button">Delete Selected Product</button>
+                                <x-filament::button color="danger" :loading-indicator="false" type="button" id="product-delete-button">Delete Selected Product</x-filament::button>
                             </div>
                             <form id="product-form" class="stacked-form products-form">
                                 <input type="hidden" id="product-id">
@@ -208,8 +184,8 @@
                                 <label>Description:<textarea id="product-description" rows="4"></textarea></label>
                                 <div id="product-custom-fields"></div>
                                 <div class="inline-actions">
-                                    <button type="submit" id="product-submit">Save Product</button>
-                                    <button type="button" id="product-clear-button">Clear</button>
+                                    <x-filament::button color="primary" :loading-indicator="false" type="submit" id="product-submit">Save Product</x-filament::button>
+                                    <x-filament::button color="gray" :loading-indicator="false" type="button" id="product-clear-button">Clear</x-filament::button>
                                 </div>
                             </form>
                         </div>
@@ -250,10 +226,10 @@
                                     </label>
                                     <div id="category-field-data-container"></div>
                                     <div class="inline-actions category-field-actions">
-                                        <button type="button" id="category-field-add-button">Add</button>
+                                        <x-filament::button color="primary" :loading-indicator="false" type="button" id="category-field-add-button">Add</x-filament::button>
                                         <div class="inline-actions category-field-actions__group">
-                                            <button type="submit" id="category-field-submit">Save</button>
-                                            <button type="button" id="category-field-delete-button">Delete</button>
+                                            <x-filament::button color="primary" :loading-indicator="false" type="submit" id="category-field-submit">Save</x-filament::button>
+                                            <x-filament::button color="danger" :loading-indicator="false" type="button" id="category-field-delete-button">Delete</x-filament::button>
                                         </div>
                                     </div>
                                 </form>
@@ -261,16 +237,6 @@
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
-    <script type="module" src="assets/js/catalog_ui.js?v={{ $catalogAssetVersions['js/catalog_ui.js'] ?? '' }}"></script>
-</body>
-
-</html>

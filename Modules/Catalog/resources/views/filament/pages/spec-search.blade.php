@@ -1,36 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <base target="_top">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Product Search / Spec Search</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/spec_search.css?v={{ $catalogAssetVersions['css/spec_search.css'] ?? '' }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js" defer></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js" defer></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}" defer></script>
-    <script type="module" src="assets/js/spec_search.js?v={{ $catalogAssetVersions['js/spec_search.js'] ?? '' }}" defer></script>
-</head>
-
-<body data-logging-enabled="true">
-    <div class="container-fluid px-0 app-shell">
+<div class="container-fluid px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
 
-            <main class="col-12 content-column">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                    <div>
-                        <h1 class="h3 mb-1">Product Search / Spec Search</h1>
-                        <p class="text-secondary mb-0">Bootstrap 5 + DataTables with class-based jQuery bindings</p>
-                    </div>
-                </div>
+            <div class="col-12 content-column">
+
 
                 <div id="status-message" class="small text-muted mb-3" role="status" aria-live="polite"></div>
 
@@ -62,7 +34,7 @@
                             <div class="text-uppercase text-muted small mb-1">Filters</div>
                             <div class="fw-semibold">Series & custom fields</div>
                         </div>
-                        <button class="btn btn-sm btn-outline-secondary" id="clear-filters" type="button">Clear</button>
+                        <x-filament::button color="gray" outlined :loading-indicator="false" id="clear-filters" type="button">Clear</x-filament::button>
                     </div>
                     <div id="selected-filters" class="mb-3 d-flex flex-wrap gap-2 mt-3"></div>
                     <div id="facet-container" class="facet-grid overflow-x-auto"></div>
@@ -80,9 +52,6 @@
                         <table id="results-table" class="table table-striped table-hover w-100"></table>
                     </div>
                 </section>
-            </main>
+            </div>
         </div>
     </div>
-</body>
-
-</html>

@@ -1,5 +1,5 @@
 /** Global loading overlay and progress controller with request counting. */
-class LoadingOverlayController {
+export class LoadingOverlayController {
     static OVERLAY_ID = 'app-loading-overlay';
     static PROGRESS_ID = 'app-loading-progress';
     static PROGRESS_BAR_CLASS = 'app-loading-progress__bar';
@@ -8,8 +8,9 @@ class LoadingOverlayController {
     static MAX_IDLE_PROGRESS = 90;
     static COMPLETE_DELAY_MS = 200;
 
-    constructor(globalObject) {
+    constructor(globalObject, root) {
         this.global = globalObject;
+        this.root = root;
         this.state = {
             activeCount: 0,
             overlayEl: null,
@@ -24,7 +25,7 @@ class LoadingOverlayController {
     /** Ensure overlay and progress elements exist and are cached. */
     ensureElements() {
         const doc = this.global.document;
-        const body = doc && doc.body;
+        const body = this.root;
         if (!body) return;
 
         if (!this.state.overlayEl) {
@@ -91,7 +92,7 @@ class LoadingOverlayController {
     /** Reveal the overlay and progress bar, locking the page surface. */
     showOverlay() {
         this.ensureElements();
-        const body = this.global.document && this.global.document.body;
+        const body = this.root;
         if (!body) return;
 
         if (this.state.hideTimer) {
@@ -114,7 +115,7 @@ class LoadingOverlayController {
     /** Hide the overlay when no active request remains. */
     hideOverlayWhenIdle() {
         const globalObject = this.global;
-        const body = globalObject.document && globalObject.document.body;
+        const body = this.root;
         if (this.state.activeCount > 0) return;
 
         this.stopGrowth();
@@ -176,11 +177,13 @@ class LoadingOverlayController {
             throw error;
         }
     }
-}
 
-const loadingOverlayController = new LoadingOverlayController(window);
-window.LoadingOverlay = {
-    start: loadingOverlayController.beginLoading.bind(loadingOverlayController),
-    end: loadingOverlayController.endLoading.bind(loadingOverlayController),
-    wrapPromise: loadingOverlayController.wrapPromise.bind(loadingOverlayController),
-};
+    destroy() {
+        this.stopGrowth();
+        this.global.clearTimeout(this.state.hideTimer);
+        this.state.activeCount = 0;
+        this.state.overlayEl?.remove();
+        this.state.progressEl?.remove();
+        this.root.classList.remove(LoadingOverlayController.BODY_LOCK_CLASS);
+    }
+}

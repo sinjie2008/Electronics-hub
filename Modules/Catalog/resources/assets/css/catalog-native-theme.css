@@ -1,0 +1,91 @@
+.catalog-workspace {
+  --catalog-background: white;
+  --catalog-text: var(--gray-950);
+  --catalog-muted: var(--gray-500);
+  --catalog-border: var(--gray-200);
+  --catalog-subtle: var(--gray-50);
+  position: relative;
+  min-width: 0;
+  color: var(--catalog-text);
+  font-family: inherit;
+}
+
+.dark .catalog-workspace {
+  --catalog-background: var(--gray-900);
+  --catalog-text: var(--gray-100);
+  --catalog-muted: var(--gray-400);
+  --catalog-border: var(--gray-700);
+  --catalog-subtle: var(--gray-800);
+}
+
+@scope (.catalog-workspace) {
+  :scope {
+    background: transparent;
+    color: var(--catalog-text);
+    font-family: inherit;
+    --bs-body-font-family: inherit;
+    --bs-body-color: var(--catalog-text);
+    --bs-body-bg: var(--catalog-background);
+    --bs-border-color: var(--catalog-border);
+    --bs-tertiary-bg: var(--catalog-subtle);
+    --bs-secondary-color: var(--catalog-muted);
+  }
+
+  .content-column, .catalog-shell .content-column { padding: 0; min-width: 0; }
+  .content-column > .row { margin-left: 0; margin-right: 0; }
+  .app-shell { min-height: 0; }
+  h2, h3, h4, h5, h6, label, .form-label, .form-check-label, .panel-products form label, .metadata-field-row label { color: var(--catalog-text); }
+  .panel, .template-panel, form, .section-block, .facet-card, .panel-series-fields, .panel-series-metadata, .panel-products form, .csv-section { background: var(--catalog-background); border-color: var(--catalog-border); box-shadow: none; }
+  .panel, .template-panel { border-radius: .75rem; }
+  .text-muted { color: var(--catalog-muted) !important; }
+  .bg-light, .bg-white { background-color: var(--catalog-subtle) !important; }
+  input, input[type=text], input[type=number], select, textarea, .form-control, .form-select, .dataTables_wrapper .dataTables_filter input, .dataTables_wrapper .dataTables_length select { color: var(--catalog-text); background-color: var(--catalog-background); border-color: var(--catalog-border); border-radius: .5rem; }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary-600); outline-color: var(--primary-600); }
+  .table { --bs-table-color: var(--catalog-text); --bs-table-bg: var(--catalog-background); --bs-table-border-color: var(--catalog-border); --bs-table-striped-bg: var(--catalog-subtle); --bs-table-striped-color: var(--catalog-text); --bs-table-hover-bg: var(--catalog-subtle); --bs-table-hover-color: var(--catalog-text); }
+  table, th, td { border-color: var(--catalog-border); }
+  table th, .csv-history th { background-color: var(--catalog-subtle); color: var(--catalog-text); }
+  #product-list-table_wrapper .dtfc-fixed-left { background-color: var(--catalog-background); }
+  div.dtfc-left-top-blocker, div.dtfc-right-top-blocker { background-color: var(--catalog-subtle); }
+  .dataTables_wrapper .dataTables_filter label, .dataTables_wrapper .dataTables_length label, .dataTables_wrapper .dataTables_info, .truncate-history-note, .datatable-empty { color: var(--catalog-muted); }
+  .dataTables_wrapper .dataTables_filter input, .dataTables_wrapper .dataTables_length select { display: inline-block; width: auto; }
+  .page-link { color: var(--primary-600); background: var(--catalog-background); border-color: var(--catalog-border); }
+  .page-item.active .page-link { color: white; background: var(--primary-600); border-color: var(--primary-600); }
+  .page-item.disabled .page-link { color: var(--catalog-muted); background: var(--catalog-subtle); }
+  .fi-btn { margin: 0; border-radius: .5rem; background: var(--bg); color: var(--text); border-color: transparent; }
+  .fi-btn:hover:not(:disabled) { background: var(--hover-bg); color: var(--hover-text); }
+  .fi-btn:disabled { background: var(--bg); border-color: transparent; }
+  button:not(.fi-btn) { border-radius: .5rem; background: var(--primary-600); color: white; border-color: transparent; }
+  .panel-csv { width: 100%; min-width: 0; }
+  .csv-actions { flex-wrap: wrap; }
+  .csv-actions form { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+  .csv-actions input[type=file] { max-width: 100%; min-width: 0; }
+  .dataTables_wrapper { overflow-x: auto; }
+  .app-loading-overlay { position: absolute; background: color-mix(in srgb, var(--catalog-background) 80%, transparent); z-index: 20; }
+  .app-loading-message { color: var(--catalog-text); background: var(--catalog-background); }
+  .app-loading-progress { position: absolute; z-index: 21; }
+  :scope.app-loading-locked { overflow: visible; }
+  .modal { position: absolute; z-index: 40; }
+  .modal-backdrop { position: absolute; z-index: 39; }
+  .modal-content { background: var(--catalog-background); color: var(--catalog-text); }
+  .hierarchy-tree { color: var(--catalog-text); }
+  .hierarchy-tree a, #hierarchy-container a { color: var(--primary-600); }
+  .search-match > .node-row a, .search-match > .node-row .product-name { background: var(--primary-100); color: var(--primary-950); }
+  .chip { background: var(--catalog-subtle); border-color: var(--catalog-border); color: var(--catalog-text); }
+  .chip button { background: transparent; color: var(--primary-600); }
+  #latex-preview-render, #latex-preview-source, .line-numbered-editor, .line-numbered-editor textarea, .line-numbered-editor .line-numbers { background-color: var(--catalog-subtle); color: var(--catalog-text); border-color: var(--catalog-border); }
+  .catalog-initialization-error { padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--danger-500); border-radius: .5rem; color: var(--danger-600); }
+  [hidden], .hidden { display: none !important; }
+
+  @media (max-width: 767px) {
+    .panel { min-width: 0; flex-basis: 100%; }
+    .template-panel { padding: 1rem; }
+    .dataTables_wrapper .row { gap: .5rem; }
+    .products-form #product-custom-fields { grid-template-columns: minmax(0, 1fr); }
+    .file-controls input[type=file] { width: 100%; max-width: 100%; min-width: 0; }
+    .metadata-field-row { flex-wrap: wrap; }
+    .metadata-field-row input { min-width: 0; }
+  }
+}
+
+.dark .catalog-workspace .fi-btn { background: var(--dark-bg); color: var(--dark-text); }
+.dark .catalog-workspace .fi-btn:hover:not(:disabled) { background: var(--dark-hover-bg); color: var(--dark-hover-text); }

@@ -1,11 +1,14 @@
+import { catalogAjax, catalogGetJson, catalogEndpoint, catalogPageUrl, catalogQuery } from './catalog-request.js';
+
 /**
  * catalog_ui.js
  * ES6 class wrapper for the Product Catalog Manager UI (jQuery-powered).
  */
 export class CatalogUI {
-    constructor() {
+    constructor(root) {
         'use strict';
-        this.apiBase = 'catalog.php';
+        this.root = root;
+        this.apiBase = catalogEndpoint('catalog.php');
 
         this.FIELD_SCOPE = {
             PRODUCT: 'product_attribute',
@@ -206,13 +209,13 @@ export class CatalogUI {
             }
         }
 
-        $(this.init);
+
     }
 
     $el(key) {
         const page = this;
         if (!page.domCache.has(key)) {
-            page.domCache.set(key, $(page.selectors[key]));
+            page.domCache.set(key, $(page.root).find(page.selectors[key]));
         }
         return page.domCache.get(key);
     }
@@ -425,7 +428,7 @@ export class CatalogUI {
 
     getQueryParams() {
         const page = this;
-        const params = new URLSearchParams(window.location.search || '');
+        const params = catalogQuery();
         const result = {};
         params.forEach((value, key) => {
             result[key] = value;
@@ -495,14 +498,14 @@ export class CatalogUI {
 
     requestJson(params) {
         const page = this;
-        return page.toPromise($.getJSON(page.apiBase, params), params?.action ?? 'ajax:get');
+        return page.toPromise(catalogGetJson(page.apiBase, params), params?.action ?? 'ajax:get');
     }
 
     postJson(action, payload = {}) {
         const page = this;
 
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `${page.apiBase}?action=${encodeURIComponent(action)}`,
                 method: 'POST',
                 contentType: 'application/json',
@@ -517,7 +520,7 @@ export class CatalogUI {
         const page = this;
 
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `${page.apiBase}?action=${encodeURIComponent(action)}`,
                 method: 'PUT',
                 contentType: 'application/json',
@@ -532,7 +535,7 @@ export class CatalogUI {
         const page = this;
 
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `${page.apiBase}?action=${encodeURIComponent(action)}`,
                 method: 'POST',
                 processData: false,
@@ -887,7 +890,7 @@ export class CatalogUI {
         page.setEmptyTableState('categoryFieldsTable', page.CATEGORY_FIELD_COLUMNS, 'Loading fields...');
         try {
             const response = await page.toPromise(
-                $.getJSON('api/typst/variables.php', { seriesId: categoryId }),
+                catalogGetJson('api/typst/variables.php', { seriesId: categoryId }),
                 'categoryFields:list'
             );
             if (requestId !== page.state.categoryFieldRequestId) {
@@ -938,7 +941,7 @@ export class CatalogUI {
             }
             formData.append('file', fileInput.files[0]);
             return page.toPromise(
-                $.ajax({
+                catalogAjax({
                     url: 'api/typst/variables.php',
                     method: 'POST',
                     processData: false,
@@ -950,7 +953,7 @@ export class CatalogUI {
             );
         }
         return page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: 'api/typst/variables.php',
                 method: 'POST',
                 contentType: 'application/json',
@@ -967,7 +970,7 @@ export class CatalogUI {
             return;
         }
         const response = await page.toPromise(
-            $.ajax({
+            catalogAjax({
                 url: `api/typst/variables.php?id=${encodeURIComponent(fieldId)}&seriesId=${encodeURIComponent(
                     page.state.categoryFieldsCategoryId
                 )}`,
@@ -1027,7 +1030,7 @@ export class CatalogUI {
         }
         const node = page.state.nodeIndex.get(page.state.selectedNodeId);
         if (node && node.type === 'series') {
-            const url = `series_typst_template.html?series_id=${node.id}`;
+            const url = catalogPageUrl('series', { series_id: node.id });
             link.attr('href', url);
             link.text('Open Series Typst Template');
             linkContainer.removeClass('d-none');
@@ -1147,7 +1150,7 @@ export class CatalogUI {
             if (clearStatus) {
                 page.setStatus('catalog', '');
             }
-            const response = await page.toPromise($.getJSON('api/catalog/hierarchy.php'));
+            const response = await page.toPromise(catalogGetJson('api/catalog/hierarchy.php'));
             if (!response.success) {
                 page.handleErrorResponse(response, 'catalog');
                 return;
@@ -1180,7 +1183,7 @@ export class CatalogUI {
         }
 
         try {
-            const response = await page.toPromise($.getJSON('api/catalog/search.php', { q: query }));
+            const response = await page.toPromise(catalogGetJson('api/catalog/search.php', { q: query }));
             if (response.success && Array.isArray(response.data)) {
                 response.data.forEach(match => {
                     if (match.type === 'product') {
@@ -2720,5 +2723,3 @@ export class CatalogUI {
         }
     }
 }
-
-new CatalogUI();

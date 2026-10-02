@@ -1,10 +1,12 @@
+import { catalogFetch, catalogPageUrl } from './catalog-request.js';
+
 /**
  * SpecSearchPage
  * jQuery-powered, class-based controller for the spec search UI.
  * Uses Bootstrap 5 + DataTables and talks to the public/api endpoints.
  */
 export class SpecSearchPage {
-    constructor() {
+    constructor(root) {
         this.api = {
             roots: 'api/spec-search/root-categories.php',
             productCategories: 'api/spec-search/product-categories.php',
@@ -57,7 +59,7 @@ export class SpecSearchPage {
             series,
             product,
         });
-        return `catalog_ui.html?${params.toString()}`;
+        return catalogPageUrl('catalog', Object.fromEntries(params));
     }
 
     /**
@@ -83,7 +85,7 @@ export class SpecSearchPage {
         this.$table.on('click', 'button[data-edit-url]', (event) => {
             const url = event.currentTarget.getAttribute('data-edit-url');
             if (url) {
-                window.top.location.href = new URL(url, window.location.href).href;
+                window.location.assign(url);
             }
         });
     }
@@ -126,7 +128,7 @@ export class SpecSearchPage {
      */
     async fetchJson(url, options = {}) {
         const runner = async () => {
-            const response = await fetch(url, {
+            const response = await catalogFetch(url, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options,
             });
@@ -555,7 +557,3 @@ export class SpecSearchPage {
 }
 
 // Bootstrap the page once DOM is ready.
-$(document).ready(() => {
-    const page = new SpecSearchPage();
-    page.init();
-});

@@ -1,5 +1,7 @@
+import { catalogDownload, catalogFetch } from './catalog-request.js';
+
 export class GlobalTypstTemplatePage {
-    constructor() {
+    constructor(root) {
         this.state = {
             table: null,
             variables: [],
@@ -16,7 +18,7 @@ export class GlobalTypstTemplatePage {
                 this[methodName] = this[methodName].bind(this);
             }
         }
-        document.addEventListener('DOMContentLoaded', this.init);
+
     }
 
 
@@ -309,7 +311,7 @@ export class GlobalTypstTemplatePage {
             requestInit.headers['Content-Type'] = 'application/json';
         }
 
-        const response = await fetch(url, requestInit);
+        const response = await catalogFetch(url, requestInit);
         const payload = await response.json().catch(() => ({}));
         const correlationId = window.AppError && window.AppError.extractCorrelationId
             ? window.AppError.extractCorrelationId(payload, response)
@@ -612,7 +614,7 @@ export class GlobalTypstTemplatePage {
             }));
 
             if (data && data.url) {
-                previewEl.innerHTML = `<iframe id="pdfPreviewFrame" src="${data.url}" title="PDF Preview"></iframe>`;
+                await window.CatalogPdfPreview.renderPdfPreview(previewEl, data.url);
             } else {
                 previewEl.innerHTML = '<div class="alert alert-warning">Compilation succeeded but no PDF URL returned.</div>';
             }
@@ -686,7 +688,7 @@ export class GlobalTypstTemplatePage {
         }
 
         if (template.downloadUrl) {
-            window.open(template.downloadUrl, '_blank');
+            catalogDownload(template.downloadUrl);
             return;
         }
 
@@ -704,7 +706,7 @@ export class GlobalTypstTemplatePage {
             if (data && data.url) {
                 template.downloadUrl = data.url;
                 page.refreshTemplatesTable();
-                window.open(data.url, '_blank');
+                catalogDownload(data.url);
                 page.showStatus('success', 'PDF generated.', correlationId);
             } else {
                 page.showStatus('warning', 'Compilation succeeded but no PDF URL returned.', correlationId);
@@ -775,5 +777,3 @@ export class GlobalTypstTemplatePage {
             '<p class="text-muted text-center mt-5">Preview will appear here.</p>';
     }
 }
-
-new GlobalTypstTemplatePage();

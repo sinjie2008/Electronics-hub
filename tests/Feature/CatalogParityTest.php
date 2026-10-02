@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Laravel\Passport\Passport;
 use Modules\Catalog\Database\Seeders\CatalogDatabaseSeeder;
-use Modules\Catalog\Http\ModuleRoutes;
 use Nwidart\Modules\Contracts\ActivatorInterface;
 use Nwidart\Modules\Facades\Module;
 use phpseclib4\Crypt\RSA;
@@ -31,12 +30,24 @@ afterEach(function () {
     }
 });
 
-it('serves the six original content documents inside the authorized Filament pages', function (string $page) {
+it('renders all six Catalog features as native Filament pages on MySQL', function (string $path, string $page, string $controlId) {
     expect(Module::findOrFail('Catalog')->isEnabled())->toBeTrue();
-    $response = $this->actingAs($this->actor)->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/'.$page);
-    $response->assertOk()->assertSee('csrf-token', false)->assertDontSee('Open Navigation');
-    expect($response->getContent())->not->toContain('@verbatim', '@{{');
-})->with(ModuleRoutes::PAGES);
+    $response = $this->actingAs($this->actor)->get($path);
+    $response->assertOk()
+        ->assertSee('data-catalog-page="'.$page.'"', false)
+        ->assertSee('id="'.$controlId.'"', false)
+        ->assertDontSee('<iframe', false)
+        ->assertDontSee('<object', false)
+        ->assertDontSee('<embed', false);
+    expect($response->getContent())->not->toContain('sidebar-panel', 'Open Navigation');
+})->with([
+    'product catalog' => ['/admin/catalog', 'product-catalog', 'hierarchy-container'],
+    'CSV import and export' => ['/admin/catalog/csv', 'csv', 'csv-import-form'],
+    'specification search' => ['/admin/catalog/spec-search', 'spec-search', 'root-category-options'],
+    'LaTeX templating' => ['/admin/catalog/latex-templating', 'latex-templating', 'templateForm'],
+    'global Typst template' => ['/admin/catalog/global-typst-template', 'global-typst-template', 'compileBtn'],
+    'series Typst template' => ['/admin/catalog/series-typst-template', 'series-typst-template', 'seriesDetailsContainer'],
+]);
 
 it('uses original compiled styles and browser scripts with versioned cache headers', function () {
     $path = module_path('Catalog', 'public/assets/css/catalog_ui.css');
@@ -44,7 +55,7 @@ it('uses original compiled styles and browser scripts with versioned cache heade
     $response = $this->actingAs($this->actor)->get('/catalog/assets/css/catalog_ui.css?v='.$hash);
     $response->assertOk()->assertHeader('Content-Type', 'text/css; charset=utf-8');
     expect($response->headers->get('Cache-Control'))->toContain('immutable', 'max-age=31536000');
-    $script = $this->get('/catalog/assets/js/catalog-csrf-bridge.js')->assertOk();
+    $script = $this->get('/catalog/assets/js/catalog-request.js')->assertOk();
     expect(file_get_contents($script->baseResponse->getFile()->getPathname()))->toContain('X-CSRF-TOKEN');
     $this->get('/catalog/storage/csv/truncate_audit.jsonl')->assertNotFound();
 });

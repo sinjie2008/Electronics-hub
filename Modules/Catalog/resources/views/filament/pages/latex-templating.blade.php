@@ -1,36 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>LaTeX Template Workspace</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] ?? '' }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
-</head>
-<body data-logging-enabled="true">
-    <div class="container-fluid px-0 app-shell">
+<div class="container-fluid px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
 
-            <main class="col-12 content-column">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                    <div>
-                        <h1 class="h3 mb-1">LaTeX Templates</h1>
-                        <p class="text-muted mb-0">Manage reusable LaTeX snippets, preview them live, and export PDFs powered by MiKTeX.</p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary text-uppercase fw-semibold d-none d-lg-inline">Bootstrap 5 + DataTables</span>
-                    </div>
-                </div>
+            <div class="col-12 content-column">
 
-                <div class="text-md-end mb-3 d-lg-none">
-                    <span class="badge bg-primary text-uppercase fw-semibold">Bootstrap 5 + DataTables</span>
-                </div>
+
+
                 <div id="statusAlert" class="alert-placeholder" aria-live="polite"></div>
 
                 <section class="template-panel">
@@ -39,9 +13,9 @@
                     <h2 class="mb-0">Templates Catalog</h2>
                     <p class="text-muted mb-0">Search, sort, and manage existing LaTeX templates.</p>
                 </div>
-                <button type="button" id="refreshTemplatesButton" class="btn btn-outline-secondary mt-3 mt-md-0">
+                <x-filament::button color="gray" outlined :loading-indicator="false" type="button" id="refreshTemplatesButton" class="mt-3 mt-md-0">
                     Refresh List
-                </button>
+                </x-filament::button>
             </div>
             <div class="table-responsive">
                 <table id="latexTemplatesTable" class="table table-striped table-hover align-middle w-100">
@@ -81,10 +55,10 @@
                             <textarea id="latexSource" class="form-control" rows="15" spellcheck="false" placeholder="\\documentclass{article}\n\\begin{document}\n Hello LaTeX!\n\\end{document}" required></textarea>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="button" id="newTemplateButton" class="btn btn-outline-secondary">New Template</button>
-                            <button type="submit" id="saveTemplateButton" class="btn btn-primary">Save Template</button>
-                            <button type="button" id="buildTemplateButton" class="btn btn-success">Build LaTeX &amp; Generate PDF</button>
-                            <button type="button" id="deleteTemplateButton" class="btn btn-outline-danger">Delete Template</button>
+                            <x-filament::button color="gray" outlined :loading-indicator="false" type="button" id="newTemplateButton">New Template</x-filament::button>
+                            <x-filament::button color="primary" :loading-indicator="false" type="submit" id="saveTemplateButton">Save Template</x-filament::button>
+                            <x-filament::button color="success" :loading-indicator="false" type="button" id="buildTemplateButton">Build LaTeX &amp; Generate PDF</x-filament::button>
+                            <x-filament::button color="danger" outlined :loading-indicator="false" type="button" id="deleteTemplateButton">Delete Template</x-filament::button>
                         </div>
                     </form>
                 </section>
@@ -109,7 +83,7 @@
                         <a id="pdfDownloadLink" class="btn btn-outline-primary d-none" target="_blank" rel="noopener">Download Latest PDF</a>
                         <span id="pdfStatusText" class="text-muted"></span>
                     </div>
-                    <iframe id="pdfPreviewFrame" class="pdf-frame d-none" title="PDF preview" aria-label="PDF preview"></iframe>
+                    <div id="pdfPreviewFrame" class="pdf-frame d-none" aria-label="PDF preview"></div>
                     <div class="mt-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h3 class="mb-0 fs-6">Build Log</h3>
@@ -120,17 +94,6 @@
                 </section>
             </div>
         </div>
-            </main>
+            </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
-    <script type="module" src="assets/js/latex-templating.js?v={{ $catalogAssetVersions['js/latex-templating.js'] ?? '' }}"></script>
-    <script src="assets/js/mathjax-config.js?v={{ $catalogAssetVersions['js/mathjax-config.js'] ?? '' }}"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-</body>
-</html>

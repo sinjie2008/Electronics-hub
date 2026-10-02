@@ -1,9 +1,13 @@
 <x-filament-panels::page>
-    <iframe
-        src="{{ $this->getCatalogContentUrl() }}"
-        title="{{ $this->getTitle() }}"
-        class="w-full rounded-xl border-0"
-        style="height: calc(100dvh - 10rem); min-height: 40rem;"
+    <div
+        class="catalog-workspace"
+        data-catalog-page="{{ $this->getCatalogPageKey() }}"
+        x-load
+        x-load-src="{{ \Illuminate\Support\Facades\Vite::asset('Modules/Catalog/resources/assets/js/catalog-workspace.js') }}"
+        x-data="catalogWorkspace({{ \Illuminate\Support\Js::from($this->getWorkspaceConfiguration()) }})"
         wire:ignore
-    ></iframe>
+    >
+        <div class="catalog-initialization-error hidden" role="alert" data-catalog-error></div>
+        @include($this->getCatalogView())
+    </div>
 </x-filament-panels::page>

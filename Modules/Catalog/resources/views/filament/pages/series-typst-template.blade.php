@@ -1,31 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Series Typst Template</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/series_typst_template.css?v={{ $catalogAssetVersions['css/series_typst_template.css'] ?? '' }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
-</head>
-
-<body data-logging-enabled="true">
-    <div class="container-fluid px-0 app-shell">
+<div class="container-fluid px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
 
-            <main class="col-12 content-column">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                    <div>
-                        <h1 class="h3 mb-1">Series Typst Template</h1>
-                        <p class="text-muted mb-0">Generate PDF for a specific series using Typst.</p>
-                    </div>
-                </div>
+            <div class="col-12 content-column">
+
 
                 <div id="statusAlert" class="alert-placeholder" aria-live="polite"></div>
 
@@ -78,8 +55,8 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <button type="button" id="loadTemplateBtn" class="btn btn-outline-primary w-100">Import
-                                Template</button>
+                            <x-filament::button color="primary" outlined :loading-indicator="false" type="button" id="loadTemplateBtn" class="w-100">Import
+                                Template</x-filament::button>
                         </div>
                     </div>
                 </section>
@@ -111,13 +88,13 @@
                             <textarea id="latexSource" class="form-control" rows="20" spellcheck="false"
                                 placeholder="Select a template to load code..."></textarea>
                             <div class="mt-3 d-flex flex-wrap gap-2">
-                                <button type="button" id="compileBtn" class="btn btn-primary">Compile Typst</button>
-                                <button type="button" id="saveCompileBtn" class="btn btn-outline-secondary">Save
-                                    Compile</button>
-                                <button type="button" id="savePdfBtn" class="btn btn-outline-secondary">Save
-                                    PDF</button>
-                                <button type="button" id="downloadPdfBtn" class="btn btn-outline-secondary">PDF
-                                    Download</button>
+                                <x-filament::button color="primary" :loading-indicator="false" type="button" id="compileBtn">Compile Typst</x-filament::button>
+                                <x-filament::button color="gray" outlined :loading-indicator="false" type="button" id="saveCompileBtn">Save
+                                    Compile</x-filament::button>
+                                <x-filament::button color="gray" outlined :loading-indicator="false" type="button" id="savePdfBtn">Save
+                                    PDF</x-filament::button>
+                                <x-filament::button color="gray" outlined :loading-indicator="false" type="button" id="downloadPdfBtn">PDF
+                                    Download</x-filament::button>
                             </div>
                         </section>
                     </div>
@@ -131,14 +108,6 @@
                     </div>
                 </div>
 
-            </main>
+            </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
-    <script type="module" src="assets/js/series-typst-templating.js?v={{ $catalogAssetVersions['js/series-typst-templating.js'] ?? '' }}"></script>
-</body>
-
-</html>

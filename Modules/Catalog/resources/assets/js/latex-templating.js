@@ -1,5 +1,8 @@
+import { catalogFetch } from './catalog-request.js';
+
 export class LatexTemplatePage {
-    constructor() {
+    constructor(root) {
+        this.root = root;
         this.state = {
             table: null,
             templates: new Map(),
@@ -13,7 +16,7 @@ export class LatexTemplatePage {
                 this[methodName] = this[methodName].bind(this);
             }
         }
-        document.addEventListener('DOMContentLoaded', this.init);
+
     }
 
     /** Tracks UI state for the LaTeX template workspace. */
@@ -81,6 +84,9 @@ export class LatexTemplatePage {
     /** Wires DOM events for CRUD operations, preview, and DataTable actions. */
     bindEvents() {
         const page = this;
+        $(page.root).on('click', '[data-bs-dismiss="alert"]', (event) => {
+            $(event.currentTarget).closest('.alert').remove();
+        });
         $('#templateForm').on('submit', page.handleSaveTemplate);
         $('#latexSource').on('input', page.schedulePreviewRender);
         $('#newTemplateButton').on('click', function () {
@@ -364,10 +370,10 @@ export class LatexTemplatePage {
         if (frame) {
             if (downloadUrl) {
                 frame.classList.remove('d-none');
-                frame.setAttribute('src', downloadUrl + '?v=' + Date.now());
+                window.CatalogPdfPreview.renderPdfPreview(frame, downloadUrl);
             } else {
                 frame.classList.add('d-none');
-                frame.removeAttribute('src');
+                window.CatalogPdfPreview.clearPdfPreview(frame);
             }
         }
         if (status) {
@@ -508,7 +514,7 @@ export class LatexTemplatePage {
                 headers['Content-Type'] = 'application/json';
                 fetchOptions.body = JSON.stringify(opts.body);
             }
-            const response = await fetch('catalog.php?' + params.toString(), fetchOptions);
+            const response = await catalogFetch('catalog.php?' + params.toString(), fetchOptions);
             const text = await response.text();
             let payload = {};
             try {
@@ -555,5 +561,3 @@ export class LatexTemplatePage {
         });
     }
 }
-
-new LatexTemplatePage();

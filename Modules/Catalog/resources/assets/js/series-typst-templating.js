@@ -1,5 +1,7 @@
+import { catalogDownload, catalogFetch, catalogQuery } from './catalog-request.js';
+
 export class SeriesTypstTemplatePage {
-    constructor() {
+    constructor(root) {
         this.state = {
             seriesId: null,
             templates: [],
@@ -13,19 +15,14 @@ export class SeriesTypstTemplatePage {
                 this[methodName] = this[methodName].bind(this);
             }
         }
-        document.addEventListener('DOMContentLoaded', () => {
-            this.init().catch((error) => {
-                console.error('Failed to initialize page', error);
-                this.showStatus('danger', 'Initialization failed: ' + (error.message || 'Unknown error'));
-            });
-        });
+
     }
 
 
 
     async init() {
         const page = this;
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = catalogQuery();
         page.state.seriesId = urlParams.get('series_id');
 
         if (!page.state.seriesId) {
@@ -314,7 +311,7 @@ export class SeriesTypstTemplatePage {
             requestInit.headers['Content-Type'] = 'application/json';
         }
 
-        const response = await fetch(url, requestInit);
+        const response = await catalogFetch(url, requestInit);
         const payload = await response.json().catch(() => ({}));
         const correlationId = window.AppError && window.AppError.extractCorrelationId
             ? window.AppError.extractCorrelationId(payload, response)
@@ -396,7 +393,7 @@ export class SeriesTypstTemplatePage {
                 // If there is a last PDF, maybe we can show it?
                 if (seriesTemplate.downloadUrl) {
                     const previewEl = document.getElementById('latex-preview-render');
-                    previewEl.innerHTML = `<iframe id="pdfPreviewFrame" src="${seriesTemplate.downloadUrl}" title="PDF Preview"></iframe>`;
+                    await window.CatalogPdfPreview.renderPdfPreview(previewEl, seriesTemplate.downloadUrl);
                     $('#downloadPdfBtn').data('url', seriesTemplate.downloadUrl);
                 }
             }
@@ -517,7 +514,7 @@ export class SeriesTypstTemplatePage {
             }));
 
             if (data && data.url) {
-                previewEl.innerHTML = `<iframe id="pdfPreviewFrame" src="${data.url}" title="PDF Preview"></iframe>`;
+                await window.CatalogPdfPreview.renderPdfPreview(previewEl, data.url);
                 // Enable download button
                 $('#downloadPdfBtn').data('url', data.url);
                 return data; // Return data including path
@@ -540,7 +537,7 @@ export class SeriesTypstTemplatePage {
         const page = this;
         const url = $('#downloadPdfBtn').data('url');
         if (url) {
-            window.open(url, '_blank');
+            catalogDownload(url);
         } else {
             page.showStatus('warning', 'Please compile first.');
         }
@@ -618,5 +615,3 @@ export class SeriesTypstTemplatePage {
         }
     }
 }
-
-new SeriesTypstTemplatePage();

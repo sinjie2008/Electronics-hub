@@ -1,4 +1,6 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../../../Modules/Catalog/public/assets/css/catalog-native.css';
+@import '../../../../Modules/Catalog/resources/assets/css/pdf-preview.css';
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';

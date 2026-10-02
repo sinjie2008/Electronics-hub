@@ -8,17 +8,23 @@ All routes below are relative to the configured `/catalog` mount. Original root 
 
 | Original entry | Laravel entry and controller | Business logic / database | Interface |
 | --- | --- | --- | --- |
-| `public/catalog_ui.html`, `catalog.php?action=v1.*` | `catalog_ui.html`, `catalog.php` → `CatalogController` | `HierarchyService`, `SeriesFieldService`, `SeriesAttributeService`, `ProductService`, `PublicCatalogService`; native Laravel connection repositories | `catalog::catalog_ui`, original `catalog_ui.js` and CSS |
-| `public/catalog-csv.html`, CSV and truncate APIs | `catalog-csv.html`, `api/catalog/csv-*.php`, `api/catalog/truncate.php` → `CatalogOperationsController` | `CatalogCsvService`, `CatalogTruncateService`; snapshot pruning, rollback, advisory lock and audit | `catalog::catalog-csv`, original CSV script and CSS |
-| `public/spec-search.html`, SQL SpecSearch APIs | `spec-search.html`, `api/spec-search/*` → `SpecSearchController` | `SpecSearchService`, `SpecSearchRepository`; category filters, facets and 500-result limit | `catalog::spec-search`, original DataTables interface |
+| `public/catalog_ui.html`, `catalog.php?action=v1.*` | Native `/admin/catalog`; `catalog.php` → `CatalogController` | `HierarchyService`, `SeriesFieldService`, `SeriesAttributeService`, `ProductService`, `PublicCatalogService`; native Laravel connection repositories | `catalog::filament.pages.product-catalog`, retained table/tree interactions |
+| `public/catalog-csv.html`, CSV and truncate APIs | Native `/admin/catalog/csv`; `api/catalog/csv-*.php`, `api/catalog/truncate.php` → `CatalogOperationsController` | `CatalogCsvService`, `CatalogTruncateService`; snapshot pruning, rollback, advisory lock and audit | `catalog::filament.pages.csv`, retained CSV workflow |
+| `public/spec-search.html`, SQL SpecSearch APIs | Native `/admin/catalog/spec-search`; `api/spec-search/*` → `SpecSearchController` | `SpecSearchService`, `SpecSearchRepository`; category filters, facets and 500-result limit | `catalog::filament.pages.spec-search`, retained DataTables/facets |
 | Legacy `v1.specSearch*` actions | `catalog.php` → `CatalogController` | `LegacySpecSearchService`; original static sample data | Original API contract |
 | Hierarchy, keyword search, series details and PDF APIs | `api/catalog/{hierarchy,search,pdf}.php`, `api/series/details.php` → read/operations controllers | `CatalogService`, `CatalogRepository`, product/metadata services | Original tree and search callers |
-| `public/latex-templating.html`, legacy LaTeX actions | `latex-templating.html`, `catalog.php` → `CatalogController` | `LatexTemplateService`, `LatexBuildService`; singular `latex_template` | `catalog::latex-templating`, original editor, MathJax and PDF preview |
+| `public/latex-templating.html`, legacy LaTeX actions | Native `/admin/catalog/latex-templating`; `catalog.php` → `CatalogController` | `LatexTemplateService`, `LatexBuildService`; singular `latex_template` | `catalog::filament.pages.latex-templating`, retained editor/MathJax and native PDF preview |
 | Separate LaTeX template/variable/compile APIs | `api/latex/*.php` → `LatexController` | `LatexService`, `LatexRepository`; plural `latex_templates`, `latex_variables` | Original API aliases and response envelopes |
-| Global and series Typst pages and APIs | `global_typst_template.html`, `series_typst_template.html`, `api/typst/*.php` → `TypstController` | `TypstService`, `TypstRepository`; variables, images, series preferences and compilation | Two original editors, token substitution and PDF previews |
+| Global and series Typst pages and APIs | Native `/admin/catalog/{global,series}-typst-template`; `api/typst/*.php` → `TypstController` | `TypstService`, `TypstRepository`; variables, images, series preferences and compilation | Native Filament Blade editors, retained tokens/preferences and canvas PDF previews |
 | Media, images, CSS, JavaScript and generated PDFs | `assets/*`, `storage/{media,latex-pdfs,typst-pdfs,typst-assets}/*` → `StorageController`; legacy media download action | `MediaStorageService`, private storage and contained file resolution | Original relative links, versioned asset manifest |
 
 `RequestInput` and `HttpRequestReader` preserve query, JSON and multipart validation. Controllers preserve status codes, message text and the original legacy/direct response envelopes. Repositories execute parameter-bound SQL through Laravel; they do not load the standalone application or PHP request globals.
+
+## Native Filament interface
+
+All six Catalog interfaces render inside the existing Filament Page layout, header, sidebar and theme. Their Blade content retains the original fields and workflows; Alpine manages the retained page widgets and request/table/observer cleanup. API requests use named Laravel route configuration, the existing session and CSRF protection. The standalone HTML views and iframe/global CSRF bridge have been removed. Original `.html` URLs remain authenticated compatibility redirects and never render standalone documents, including requests with `Sec-Fetch-Dest: iframe`.
+
+Template PDF previews use the approved `pdfjs-dist` dependency for canvas rendering and selectable text, with page/zoom/search/download controls and printing in the current document. Run `npm ci && npm run build` to generate the Vite entry/worker and protected PDF font/CMap/Wasm resources. Functional inventory, final verification and explicit browser limits are recorded in [the native migration checklist](../../docs/catalog-native-migration.md).
 
 ## Module and database setup
 
@@ -63,7 +69,7 @@ These tests cover route/view/assets integration, authorization, request contract
 The legacy LaTeX implementation requires a nonempty description when saving a template: its source service normalizes an empty description to `null`, while its repository accepts `string`. This existing source failure is retained; it is not silently replaced with a different validation rule.
 Its MathJax preview also reports an unknown `document` environment for a full pdflatex document in both the reference copy and target; actual LaTeX PDF compilation and preview succeeded on both sides.
 
-### Recorded validation — 2 October 2026
+### Previous backend-migration validation — 2 October 2026
 
 Validation ran in Ubuntu/WSL with PHP 8.4.26, Node 24.21.0, MySQL, Redis, Typst and pdflatex, using independent catalog and host-browser database copies.
 

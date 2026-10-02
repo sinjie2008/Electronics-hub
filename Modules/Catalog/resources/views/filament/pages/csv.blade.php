@@ -1,31 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Catalog CSV Import / Export</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
-    <link rel="stylesheet" href="assets/css/catalog_ui.css?v={{ $catalogAssetVersions['css/catalog_ui.css'] ?? '' }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="assets/js/catalog-csrf-bridge.js?v={{ $catalogAssetVersions['js/catalog-csrf-bridge.js'] ?? '' }}"></script>
-</head>
-
-<body data-logging-enabled="true">
-    <div class="container-fluid catalog-shell px-0 app-shell">
+<div class="container-fluid catalog-shell px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
 
-            <main class="col-12 content-column">
-                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
-                    <div>
-                        <h1 class="mb-1">Catalog CSV Tools</h1>
-                        <p class="text-muted mb-0">Export, import, restore, and audit CSV catalog snapshots.</p>
-                    </div>
-                </div>
+            <div class="col-12 content-column">
+
 
                 <div id="status-message"></div>
 
@@ -33,13 +10,13 @@
                     <div class="panel panel-csv csv-section">
                         <h2>CSV Import / Export</h2>
                         <div class="csv-actions">
-                            <button type="button" id="csv-export-button">Export Catalog CSV</button>
+                            <x-filament::button color="primary" :loading-indicator="false" type="button" id="csv-export-button">Export Catalog CSV</x-filament::button>
                             <form id="csv-import-form" enctype="multipart/form-data">
                                 <label for="csv-import-file">Import CSV:</label>
                                 <input type="file" id="csv-import-file" accept=".csv">
-                                <button type="submit" id="csv-import-submit">Import</button>
+                                <x-filament::button color="primary" :loading-indicator="false" type="submit" id="csv-import-submit">Import</x-filament::button>
                             </form>
-                            <button type="button" id="truncate-button" class="danger-button">Truncate Catalog</button>
+                            <x-filament::button color="danger" :loading-indicator="false" type="button" id="truncate-button">Truncate Catalog</x-filament::button>
                         </div>
                         <div class="truncate-warning">
                             Truncate wipes every category, series, product, and custom field definition/value before
@@ -89,7 +66,7 @@
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
 
         <div id="truncate-modal-backdrop" class="modal-backdrop" hidden></div>
@@ -107,21 +84,11 @@
                         placeholder="Describe why you are truncating." required></textarea>
                     <div id="truncate-modal-error" class="modal-error" aria-live="polite"></div>
                     <div class="modal-actions">
-                        <button type="button" id="truncate-cancel-button">Cancel</button>
-                        <button type="submit" id="truncate-confirm-button" class="danger-button" disabled>Confirm
-                            Truncate</button>
+                        <x-filament::button color="gray" :loading-indicator="false" type="button" id="truncate-cancel-button">Cancel</x-filament::button>
+                        <x-filament::button color="danger" :loading-indicator="false" type="submit" id="truncate-confirm-button" disabled>Confirm
+                            Truncate</x-filament::button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-    <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
-    <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
-    <script type="module" src="assets/js/catalog_csv.js?v={{ $catalogAssetVersions['js/catalog_csv.js'] ?? '' }}"></script>
-</body>
-
-</html>
