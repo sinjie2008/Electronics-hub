@@ -31,17 +31,17 @@ afterEach(function () {
     }
 });
 
-it('discovers the module and serves the six original pages with native assets', function (string $page) {
+it('serves the six original content documents inside the authorized Filament pages', function (string $page) {
     expect(Module::findOrFail('Catalog')->isEnabled())->toBeTrue();
-    $response = $this->actingAs($this->actor)->get('/catalog/'.$page);
-    $response->assertOk()->assertSee('Catalog Suite')->assertSee('csrf-token', false);
+    $response = $this->actingAs($this->actor)->withHeader('Sec-Fetch-Dest', 'iframe')->get('/catalog/'.$page);
+    $response->assertOk()->assertSee('csrf-token', false)->assertDontSee('Open Navigation');
     expect($response->getContent())->not->toContain('@verbatim', '@{{');
 })->with(ModuleRoutes::PAGES);
 
 it('uses original compiled styles and browser scripts with versioned cache headers', function () {
     $path = module_path('Catalog', 'public/assets/css/catalog_ui.css');
     $hash = substr(hash_file('sha256', $path), 0, 16);
-    $response = $this->get('/catalog/assets/css/catalog_ui.css?v='.$hash);
+    $response = $this->actingAs($this->actor)->get('/catalog/assets/css/catalog_ui.css?v='.$hash);
     $response->assertOk()->assertHeader('Content-Type', 'text/css; charset=utf-8');
     expect($response->headers->get('Cache-Control'))->toContain('immutable', 'max-age=31536000');
     $script = $this->get('/catalog/assets/js/catalog-csrf-bridge.js')->assertOk();
@@ -49,10 +49,10 @@ it('uses original compiled styles and browser scripts with versioned cache heade
     $this->get('/catalog/storage/csv/truncate_audit.jsonl')->assertNotFound();
 });
 
-it('keeps public search available and protects administrative operations', function () {
-    $this->get('/catalog/spec-search.html')->assertOk();
-    $this->getJson('/catalog/api/spec-search/root-categories.php')->assertOk()->assertJsonPath('success', true);
-    $this->get('/catalog/catalog_ui.html')->assertRedirect('/login');
+it('requires Filament authentication for search and protects administrative operations', function () {
+    $this->get('/catalog/spec-search.html')->assertRedirect('/admin/login');
+    $this->getJson('/catalog/api/spec-search/root-categories.php')->assertUnauthorized()->assertJsonPath('error.code', 'UNAUTHENTICATED');
+    $this->get('/catalog/catalog_ui.html')->assertRedirect('/admin/login');
     $this->postJson('/catalog/catalog.php?action=v1.saveNode', ['name' => 'blocked'])
         ->assertUnauthorized()->assertJsonPath('errorCode', 'UNAUTHENTICATED');
     $ordinary = User::factory()->create();
@@ -67,7 +67,7 @@ it('rejects inactive administrators and real method spoofing through a view-only
     $this->actingAs($inactive)->postJson('/catalog/api/typst/templates.php', ['title' => 'inactive'])
         ->assertForbidden();
     $viewer = User::factory()->create();
-    $viewer->givePermissionTo('catalog.view');
+    $viewer->givePermissionTo(['access.admin', 'catalog.view']);
     $this->actingAs($viewer)->post('/catalog/api/typst/variables.php', [
         '_method' => 'GET', 'key' => 'spoofed', 'value' => 'blocked',
     ])->assertForbidden()->assertJsonPath('error.code', 'FORBIDDEN');
@@ -101,7 +101,7 @@ it('preserves JSON errors, method errors and supplied correlation ids across req
 });
 
 it('seeds the original catalog only when its migration marker is absent', function () {
-    $this->getJson('/catalog/catalog.php?action=v1.ping')->assertOk();
+    $this->actingAs($this->actor)->getJson('/catalog/catalog.php?action=v1.ping')->assertOk();
     expect(DB::table('category')->count())->toBe(5)
         ->and(DB::table('product')->count())->toBe(4)
         ->and(DB::table('product')->where('sku', 'C0-100')->value('name'))->toBe('Capacitor 100uF');

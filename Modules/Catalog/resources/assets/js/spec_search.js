@@ -83,7 +83,7 @@ export class SpecSearchPage {
         this.$table.on('click', 'button[data-edit-url]', (event) => {
             const url = event.currentTarget.getAttribute('data-edit-url');
             if (url) {
-                window.location.href = url;
+                window.top.location.href = new URL(url, window.location.href).href;
             }
         });
     }

@@ -2,13 +2,14 @@
 <html lang="en">
 
 <head>
+    <base target="_top">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Global Typst Template</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] ?? '' }}">
+    <link rel="stylesheet" href="assets/css/catalog-shell.css?v={{ $catalogAssetVersions['css/catalog-shell.css'] ?? '' }}">
     <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] ?? '' }}">
     <link rel="stylesheet" href="assets/css/global_typst_template.css?v={{ $catalogAssetVersions['css/global_typst_template.css'] ?? '' }}">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -18,54 +19,12 @@
 <body data-logging-enabled="true">
     <div class="container-fluid px-0 app-shell">
         <div class="row flex-lg-nowrap g-0">
-            <aside class="col-12 col-lg-3 col-xl-2 sidebar-column">
-                <div class="sidebar-panel" id="pageSidebar" aria-label="Sidebar Navigation">
-                    <div class="sidebar-brand">
-                        <div class="brand-text">
-                            <div class="title">Catalog Suite</div>
-                            <div class="subtitle">AdminLTE-inspired</div>
-                        </div>
-                        <button class="btn btn-sm sidebar-collapse-btn" type="button" data-sidebar-collapse="true"
-                            aria-label="Collapse sidebar">
-                            <span class="btn-icon">&#9776;</span>
-                        </button>
-                    </div>
-                    <div class="sidebar-heading">Navigation</div>
-                    <nav class="sidebar-nav nav flex-column">
-                        <a class="nav-link" href="spec-search.html">
-                            <span class="sidebar-indicator"></span>
-                            <span class="nav-label">Spec Search</span>
-                        </a>
-                        <a class="nav-link" href="catalog_ui.html">
-                            <span class="sidebar-indicator"></span>
-                            <span class="nav-label">Catalog UI</span>
-                        </a>
-                        <a class="nav-link" href="catalog-csv.html">
-                            <span class="sidebar-indicator"></span>
-                            <span class="nav-label">CSV Import/Export</span>
-                        </a>
-                        <a class="nav-link active" aria-current="page" href="global_typst_template.html">
-                            <span class="sidebar-indicator"></span>
-                            <span class="nav-label">Global Typst Template</span>
-                        </a>
-                        <a class="nav-link" href="series_typst_template.html">
-                            <span class="sidebar-indicator"></span>
-                            <span class="nav-label">Series Typst Template</span>
-                        </a>
-                    </nav>
-                </div>
-            </aside>
-            <main class="col-12 col-lg-9 col-xl-10 content-column">
+
+            <main class="col-12 content-column">
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-3">
                     <div>
                         <h1 class="h3 mb-1">Global Typst Template</h1>
                         <p class="text-muted mb-0">Manage global templates and variables using Typst.</p>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-outline-primary d-lg-none app-nav-toggle" type="button"
-                            data-sidebar-toggle="true">
-                            Open Navigation
-                        </button>
                     </div>
                 </div>
 
@@ -207,13 +166,11 @@
 
             </main>
         </div>
-        <div class="sidebar-backdrop" aria-hidden="true"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
-    <script src="assets/js/sidebar-nav.js?v={{ $catalogAssetVersions['js/sidebar-nav.js'] ?? '' }}"></script>
     <script src="assets/js/app_loading.js?v={{ $catalogAssetVersions['js/app_loading.js'] ?? '' }}"></script>
     <script src="assets/js/app_error.js?v={{ $catalogAssetVersions['js/app_error.js'] ?? '' }}"></script>
     <script type="module" src="assets/js/global-typst-templating.js?v={{ $catalogAssetVersions['js/global-typst-templating.js'] ?? '' }}"></script>

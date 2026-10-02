@@ -40,17 +40,7 @@ final class CatalogServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        if (! $this->app->configurationIsCached()) {
-            $defaults = require dirname(__DIR__, 2).'/config/config.php';
-            $settings = Config::combine($defaults, (array) config('catalog', []));
-            $this->app['config']->set('catalog', $settings);
-            if (config('catalog.connection') === 'default') {
-                $this->app['config']->set('catalog.connection', config('database.default'));
-            }
-            if (config('catalog.connection') === 'catalog') {
-                $this->app['config']->set('database.connections.catalog', config('catalog.database'));
-            }
-        }
+        $this->app->register(RouteServiceProvider::class);
         $this->app->scoped(RequestInput::class, function ($app): RequestInput {
             $input = new RequestInput($app['request']);
             $app->refresh('request', $input, 'setRequest');
@@ -108,7 +98,6 @@ final class CatalogServiceProvider extends ServiceProvider
         $this->app->bind(CatalogOperationsController::class, fn ($app) => new CatalogOperationsController(
             $app->make(RequestInput::class), fn () => $app->make(CatalogController::class)
         ));
-        $this->app->register(RouteServiceProvider::class);
     }
 
     /** Host values take precedence over defaults, including when config is cached. */
@@ -119,7 +108,6 @@ final class CatalogServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadViewsFrom(dirname(__DIR__, 2).'/resources/views', 'catalog');
         $this->registerConfig();
         $this->registerBackupSources();
         foreach (['view', 'manage', 'csv', 'templates', 'truncate'] as $ability) {

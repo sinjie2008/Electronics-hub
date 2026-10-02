@@ -624,8 +624,7 @@ it('rolls back a product insert when an uploaded custom field is rejected', func
 });
 
 it('searches SQL-backed product facets and applies bound category and custom-field filters', function (): void {
-    $connection = catalogBehaviorConnection();
-    catalogBehaviorMarkInitialSeeded($connection);
+    $connection = catalogBehaviorPrepare($this);
     $tree = catalogBehaviorCreateTree($connection, 'Electrical', 'Capacitors', 'C-Series');
     $fieldId = catalogBehaviorInsertField($connection, $tree['seriesId'], 'voltage_rating');
     $firstProductId = catalogBehaviorInsertProduct($connection, $tree['seriesId'], 'CAP-16', '16V Capacitor');

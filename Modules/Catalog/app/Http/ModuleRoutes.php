@@ -127,6 +127,7 @@ final class ModuleRoutes
             foreach (['assets', 'media', 'latex-pdfs', 'typst-pdfs', 'typst-assets'] as $kind) {
                 $path = $kind === 'assets' ? 'assets/{path}' : 'storage/'.$kind.'/{path}';
                 Route::match(['GET', 'HEAD'], $path, [StorageController::class, 'download'])
+                    ->middleware(['web', CatalogAccess::class])
                     ->where('path', '.+')->defaults('catalog_storage', $kind)->defaults('catalog_mount', $prefix)
                     ->name($namePrefix.'files.'.$kind);
             }

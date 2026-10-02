@@ -47,6 +47,7 @@ class ModuleManagement extends Page
         Gate::authorize('modules.view');
         app(ModuleManager::class)->enable(Auth::user(), $name);
         Notification::make()->title('Module enabled')->success()->send();
+        $this->redirect(static::getUrl());
     }
 
     public function disableModule(string $name): void
@@ -54,6 +55,7 @@ class ModuleManagement extends Page
         Gate::authorize('modules.view');
         app(ModuleManager::class)->disable(Auth::user(), $name);
         Notification::make()->title('Module disabled')->success()->send();
+        $this->redirect(static::getUrl());
     }
 
     protected function getViewData(): array

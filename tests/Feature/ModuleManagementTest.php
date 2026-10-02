@@ -111,12 +111,18 @@ it('discovers real IAM and System Filament components through coolsam modules', 
         ->and($panel->getPages())->toContain(ModuleManagement::class);
 });
 
-it('returns 404 for disabled Catalog routes and absent Filament redesigns even for a Super Admin', function (string $path) {
+it('returns 404 for disabled Catalog routes and unsupported resource URLs even for a Super Admin', function (string $path) {
     $this->actingAs($this->actor)->get($path)->assertNotFound();
 })->with([
     'catalog page' => '/catalog/catalog_ui.html',
     'legacy catalog API' => '/catalog.php?action=v1.category.list',
     'legacy Typst API' => '/api/typst/templates.php',
+    'Filament catalog' => '/admin/catalog',
+    'Filament CSV' => '/admin/catalog/csv',
+    'Filament search' => '/admin/catalog/spec-search',
+    'Filament LaTeX' => '/admin/catalog/latex-templating',
+    'Filament global Typst' => '/admin/catalog/global-typst-template',
+    'Filament series Typst' => '/admin/catalog/series-typst-template',
     'admin categories and series' => '/admin/nodes/catalog-nodes',
     'admin products' => '/admin/products/catalog-products',
     'admin series fields' => '/admin/series-fields',

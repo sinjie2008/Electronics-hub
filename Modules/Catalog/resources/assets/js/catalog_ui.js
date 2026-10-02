@@ -372,32 +372,8 @@ export class CatalogUI {
         }
     }
 
-    observeSidebarState() {
-        const page = this;
-        const shell = document.querySelector('.app-shell');
-        if (!shell || typeof MutationObserver === 'undefined') {
-            return;
-        }
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    page.handleLayoutChange();
-                    break;
-                }
-            }
-        });
-        observer.observe(shell, { attributes: true, attributeFilter: ['class'] });
-    }
-
     bindLayoutReflowEvents() {
         const page = this;
-        const sidebarPanel = document.querySelector('.sidebar-panel');
-        if (sidebarPanel) {
-            ['click', 'transitionend'].forEach((evt) => {
-                sidebarPanel.addEventListener(evt, page.handleLayoutChange);
-            });
-        }
-        document.addEventListener('sidebar:state', page.handleLayoutChange);
         window.addEventListener('resize', page.handleLayoutChange);
     }
 
@@ -2735,7 +2711,6 @@ export class CatalogUI {
         const csvUiPresent = page.$el('csvHistoryTable').length > 0;
         page.bindGlobalEvents(csvUiPresent);
         page.bindLayoutReflowEvents();
-        page.observeSidebarState();
         page.resetSeriesUI();
         page.resetCategoryFieldsUI();
         await page.loadHierarchy();
