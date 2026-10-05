@@ -1096,8 +1096,8 @@ table th {
   .app-loading-message { color: var(--catalog-text); background: var(--catalog-background); }
   .app-loading-progress { position: absolute; z-index: 21; }
   :scope.app-loading-locked { overflow: visible; }
-  .modal { position: absolute; z-index: 40; }
-  .modal-backdrop { position: absolute; z-index: 39; }
+  .modal { position: fixed; z-index: 40; }
+  .modal-backdrop { position: fixed; z-index: 39; }
   .modal-content { background: var(--catalog-background); color: var(--catalog-text); }
   .hierarchy-tree { color: var(--catalog-text); }
   .hierarchy-tree a, #hierarchy-container a { color: var(--primary-600); }

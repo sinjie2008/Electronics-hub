@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -247,6 +248,23 @@ it('rejects deleting non-leaf nodes and removing a series that still has product
         ->assertJsonPath('message', 'Cannot convert series with products into category.');
 
     $this->assertDatabaseHas('product', ['id' => $productId, 'series_id' => $tree['seriesId']], (string) config('catalog.connection'));
+});
+
+it('preserves a disabled Typst template on subsequent catalog requests', function (): void {
+    $connection = catalogBehaviorPrepare($this);
+    $tree = catalogBehaviorCreateTree($connection);
+    $connection->table('category')->where('id', $tree['seriesId'])->update([
+        'latex_templating_enabled' => 1,
+        'typst_templating_enabled' => 0,
+    ]);
+
+    $this->get('/catalog/catalog.php?action=v1.listHierarchy')->assertOk()
+        ->assertJsonPath('data.hierarchy.0.children.0.children.0.typstTemplatingEnabled', false);
+
+    $this->assertDatabaseHas('category', [
+        'id' => $tree['seriesId'],
+        'typst_templating_enabled' => 0,
+    ], (string) config('catalog.connection'));
 });
 
 it('keeps product and metadata field scopes distinct and preserves field defaults and visibility flags', function (): void {
@@ -717,6 +735,126 @@ it('rolls back every catalog row from a malformed CSV snapshot', function (): vo
         ->and($connection->table('product')->where('id', $productId)->exists())->toBeTrue()
         ->and($connection->table('category')->where('name', 'New root')->exists())->toBeFalse();
 });
+
+it('imports a dense CSV through the page action with a bounded query budget and restores its values', function (int $productCount, int $attributeCount, int $seriesCount, int $populatedAttributeCount, int $queryBudget): void {
+    $connection = catalogBehaviorPrepare($this);
+    $columns = array_map(static fn (int $index): string => 'attribute_'.$index, range(1, $attributeCount));
+    $stream = fopen('php://temp', 'w+');
+    fputcsv($stream, ['category_path', 'product_name', ...$columns]);
+    foreach (range(1, $productCount) as $index) {
+        fputcsv($stream, [
+            'Power > Components > Dense series '.((($index - 1) % $seriesCount) + 1),
+            'DENSE-'.$index,
+            ...array_fill(0, $populatedAttributeCount - 1, '16V'),
+            ...array_fill(0, $attributeCount - $populatedAttributeCount, ''),
+            'Quoted "value", with comma',
+        ]);
+    }
+    rewind($stream);
+    $csv = stream_get_contents($stream);
+    fclose($stream);
+    $queryCount = 0;
+    $connection->listen(static function (QueryExecuted $query) use ($connection, &$queryCount): void {
+        if ($query->connection === $connection) {
+            $queryCount++;
+        }
+    });
+
+    $response = $this->post('/catalog/catalog.php?action=v1.importCsv', [
+        'file' => UploadedFile::fake()->createWithContent('dense.csv', $csv),
+    ]);
+
+    $response->assertOk()->assertJsonPath('data.importedProducts', $productCount);
+    expect($queryCount)->toBeLessThan($queryBudget);
+    $this->assertDatabaseCount('product', $productCount, (string) config('catalog.connection'));
+    $this->assertDatabaseCount('product_custom_field_value', $productCount * $populatedAttributeCount, (string) config('catalog.connection'));
+    expect($connection->table('series_custom_field')->where('field_scope', SeriesFieldService::SCOPE_PRODUCT)->count())
+        ->toBe($seriesCount * $attributeCount);
+    $seriesId = $connection->table('product')->where('sku', 'DENSE-'.$productCount)->value('series_id');
+    $fieldId = $connection->table('series_custom_field')->where('series_id', $seriesId)->where('field_key', 'attribute_'.$attributeCount)->value('id');
+    $productId = $connection->table('product')->where('sku', 'DENSE-'.$productCount)->value('id');
+    $this->assertDatabaseHas('product_custom_field_value', [
+        'product_id' => $productId,
+        'series_custom_field_id' => $fieldId,
+        'value' => 'Quoted "value", with comma',
+    ], (string) config('catalog.connection'));
+
+    $connection->table('product_custom_field_value')->where('product_id', $productId)->update(['value' => 'Changed']);
+    $queryCount = 0;
+    $this->postJson('/catalog/catalog.php?action=v1.restoreCsv', ['id' => $response->json('data.fileId')])
+        ->assertOk()->assertJsonPath('data.importedProducts', $productCount);
+    expect($queryCount)->toBeLessThan($queryBudget);
+    $this->assertDatabaseHas('product_custom_field_value', [
+        'product_id' => $productId,
+        'series_custom_field_id' => $fieldId,
+        'value' => 'Quoted "value", with comma',
+    ], (string) config('catalog.connection'));
+})->with([
+    'dense snapshot' => [512, 32, 1, 32, 4000],
+    'many series snapshot' => [512, 110, 32, 7, 4000],
+    'large snapshot' => [6101, 110, 482, 7, 30000],
+]);
+
+it('synchronizes CSV field order without changing existing field settings or metadata', function (): void {
+    $connection = catalogBehaviorPrepare($this);
+    $tree = catalogBehaviorCreateTree($connection, 'Power', 'Components', 'Dense series');
+    $fieldId = catalogBehaviorInsertField($connection, $tree['seriesId'], 'voltage', overrides: [
+        'label' => 'Rated voltage',
+        'field_type' => 'number',
+        'default_value' => '12',
+        'sort_order' => 9,
+        'is_required' => 1,
+        'is_public_portal_hidden' => 1,
+        'is_backend_portal_hidden' => 1,
+    ]);
+    $metadataId = catalogBehaviorInsertField($connection, $tree['seriesId'], 'voltage', SeriesFieldService::SCOPE_SERIES, ['sort_order' => 8]);
+    $csv = "category_path,product_name,voltage,123\nPower > Components > Dense series,CSV-1,16,Numeric header\n";
+
+    $this->post('/catalog/catalog.php?action=v1.importCsv', [
+        'file' => UploadedFile::fake()->createWithContent('fields.csv', $csv),
+    ])->assertOk()->assertJsonPath('data.importedProducts', 1);
+
+    $this->assertDatabaseHas('series_custom_field', [
+        'id' => $fieldId,
+        'label' => 'Rated voltage',
+        'field_type' => 'number',
+        'default_value' => '12',
+        'sort_order' => 0,
+        'is_required' => 1,
+        'is_public_portal_hidden' => 1,
+        'is_backend_portal_hidden' => 1,
+    ], (string) config('catalog.connection'));
+    $this->assertDatabaseHas('series_custom_field', ['id' => $metadataId, 'sort_order' => 8], (string) config('catalog.connection'));
+    $numericFieldId = $connection->table('series_custom_field')->where('series_id', $tree['seriesId'])->where('field_key', '123')->value('id');
+    $this->assertDatabaseHas('product_custom_field_value', [
+        'series_custom_field_id' => $numericFieldId,
+        'value' => 'Numeric header',
+    ], (string) config('catalog.connection'));
+});
+
+it('rolls back CSV snapshots when field keys collide under the database collation', function (bool $existingField): void {
+    $connection = catalogBehaviorPrepare($this);
+    $tree = catalogBehaviorCreateTree($connection, 'Power', 'Components', 'Dense series');
+    $productId = catalogBehaviorInsertProduct($connection, $tree['seriesId'], 'ORIGINAL', 'Original product');
+    if ($existingField) {
+        catalogBehaviorInsertField($connection, $tree['seriesId'], 'VOLTAGE');
+    }
+    $columns = $existingField ? 'voltage' : 'voltage,VOLTAGE';
+    $values = $existingField ? '16' : '16,25';
+    $csv = "category_path,product_name,$columns\nPower > Components > Dense series,CSV-1,$values\n";
+
+    $this->post('/catalog/catalog.php?action=v1.importCsv', [
+        'file' => UploadedFile::fake()->createWithContent('duplicate-fields.csv', $csv),
+    ])->assertBadRequest()
+        ->assertJsonPath('errorCode', 'VALIDATION_ERROR')
+        ->assertJsonPath('message', 'Field key must be unique within the series and scope.');
+
+    $this->assertDatabaseHas('product', ['id' => $productId, 'sku' => 'ORIGINAL'], (string) config('catalog.connection'));
+    $this->assertDatabaseCount('product', 1, (string) config('catalog.connection'));
+    expect($connection->table('series_custom_field')->where('series_id', $tree['seriesId'])
+        ->where('field_scope', SeriesFieldService::SCOPE_PRODUCT)->count())
+        ->toBe($existingField ? 1 : 0);
+})->with(['CSV headers' => [false], 'existing definition' => [true]]);
 
 it('treats a header-only CSV as an empty full snapshot', function (): void {
     $connection = catalogBehaviorPrepare($this);

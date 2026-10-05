@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Catalog\Services;
 
 use Illuminate\Database\Connection;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Repositories\CatalogCsvRepository;
@@ -379,7 +380,6 @@ final class CatalogCsvService
         $categoryCache = [];
         $seriesCache = [];
         $seriesFieldCache = [];
-        $fieldSortSynchronized = [];
 
         $createdCategories = 0;
         $createdSeries = 0;
@@ -432,57 +432,18 @@ final class CatalogCsvService
                 );
 
                 if (! isset($seriesFieldCache[$seriesId])) {
-                    $seriesFieldCache[$seriesId] = [
-                        SeriesFieldService::SCOPE_PRODUCT => null,
-                    ];
-                }
-                if ($seriesFieldCache[$seriesId][SeriesFieldService::SCOPE_PRODUCT] === null) {
-                    $seriesFieldCache[$seriesId][SeriesFieldService::SCOPE_PRODUCT] = $this->buildSeriesFieldMap(
+                    $seriesFieldCache[$seriesId] = $this->synchronizeSeriesProductFields(
                         $seriesId,
-                        SeriesFieldService::SCOPE_PRODUCT
+                        $attributeOrder
                     );
                 }
 
-                $productFieldMap = &$seriesFieldCache[$seriesId][SeriesFieldService::SCOPE_PRODUCT];
+                $productFieldMap = $seriesFieldCache[$seriesId];
 
                 $customValues = [];
                 foreach ($attributeColumns as $index => $fieldKey) {
                     $value = isset($row[$index]) ? trim((string) $row[$index]) : '';
                     $customValues[$fieldKey] = $value;
-                    $desiredOrder = $attributeOrder[$fieldKey] ?? 0;
-                    if (! isset($productFieldMap[$fieldKey])) {
-                        $label = $this->deriveCustomFieldLabel($fieldKey);
-                        $field = $this->seriesFieldService->saveField([
-                            'seriesId' => $seriesId,
-                            'fieldKey' => $fieldKey,
-                            'label' => $label,
-                            'fieldType' => 'text',
-                            'fieldScope' => SeriesFieldService::SCOPE_PRODUCT,
-                            'isRequired' => false,
-                            'sortOrder' => $desiredOrder,
-                        ]);
-                        $productFieldMap[$fieldKey] = $field;
-                    } else {
-                        $existingOrder = (int) ($productFieldMap[$fieldKey]['sortOrder'] ?? 0);
-                        if (
-                            $existingOrder !== $desiredOrder
-                            && ! isset($fieldSortSynchronized[$seriesId][$fieldKey])
-                        ) {
-                            $field = $this->seriesFieldService->saveField([
-                                'id' => (int) $productFieldMap[$fieldKey]['id'],
-                                'seriesId' => $seriesId,
-                                'fieldKey' => $fieldKey,
-                                'label' => $productFieldMap[$fieldKey]['label'],
-                                'fieldType' => $productFieldMap[$fieldKey]['fieldType'],
-                                'fieldScope' => SeriesFieldService::SCOPE_PRODUCT,
-                                'defaultValue' => $productFieldMap[$fieldKey]['defaultValue'] ?? null,
-                                'isRequired' => (bool) ($productFieldMap[$fieldKey]['isRequired'] ?? false),
-                                'sortOrder' => $desiredOrder,
-                            ]);
-                            $productFieldMap[$fieldKey] = $field;
-                            $fieldSortSynchronized[$seriesId][$fieldKey] = true;
-                        }
-                    }
                 }
 
                 $productLabel = trim((string) ($row[$columns['product_name']] ?? ''));
@@ -553,6 +514,50 @@ final class CatalogCsvService
         }
 
         return $fieldMap;
+    }
+
+    /**
+     * @param  array<string, int>  $attributeOrder
+     * @return array<string, array<string, mixed>>
+     */
+    private function synchronizeSeriesProductFields(int $seriesId, array $attributeOrder): array
+    {
+        $fieldMap = $this->buildSeriesFieldMap($seriesId, SeriesFieldService::SCOPE_PRODUCT);
+        $missingFields = [];
+        $changedOrders = [];
+
+        foreach ($attributeOrder as $fieldKey => $sortOrder) {
+            $fieldKey = (string) $fieldKey;
+            if (! isset($fieldMap[$fieldKey])) {
+                $missingFields[] = [
+                    'series_id' => $seriesId,
+                    'field_key' => $fieldKey,
+                    'label' => $this->deriveCustomFieldLabel($fieldKey),
+                    'field_type' => 'text',
+                    'field_scope' => SeriesFieldService::SCOPE_PRODUCT,
+                    'sort_order' => $sortOrder,
+                ];
+            } elseif ((int) $fieldMap[$fieldKey]['sortOrder'] !== $sortOrder) {
+                $changedOrders[(int) $fieldMap[$fieldKey]['id']] = $sortOrder;
+                $fieldMap[$fieldKey]['sortOrder'] = $sortOrder;
+            }
+        }
+
+        try {
+            $this->repository->insertProductFieldsFromImport($missingFields);
+        } catch (UniqueConstraintViolationException) {
+            throw new CatalogApiException(
+                'VALIDATION_ERROR',
+                'Field key must be unique within the series and scope.',
+                400,
+                ['fieldKey' => 'Field key must be unique within the series and scope.']
+            );
+        }
+        $this->repository->updateProductFieldSortOrders($seriesId, $changedOrders);
+
+        return $missingFields !== []
+            ? $this->buildSeriesFieldMap($seriesId, SeriesFieldService::SCOPE_PRODUCT)
+            : $fieldMap;
     }
 
     private function upsertCategory(

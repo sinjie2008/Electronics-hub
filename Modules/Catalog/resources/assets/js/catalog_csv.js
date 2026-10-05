@@ -31,6 +31,7 @@ export class CatalogCsvPage {
         };
 
         this.state = {
+            csvSubmitting: false,
             truncate: {
                 submitting: false,
                 serverLock: false,
@@ -200,7 +201,7 @@ export class CatalogCsvPage {
     setStatusWithError(message, error) {
         const page = this;
         const correlationId = error?.correlationId ?? null;
-        page.setStatus(AppError.buildUserMessage(message, correlationId), true);
+        page.setStatus(error?.message || AppError.buildUserMessage(message, correlationId), true);
     }
 
     handleErrorResponse(response, fallback = 'Request failed.') {
@@ -296,21 +297,38 @@ export class CatalogCsvPage {
         page.dataTableRegistry.set(tableKey, { instance, signature });
     }
 
+    isOperationLocked() {
+        return this.state.csvSubmitting || this.state.truncate.submitting || this.state.truncate.serverLock;
+    }
+
+    beginCsvOperation(message) {
+        if (this.isOperationLocked()) {
+            return false;
+        }
+        this.state.csvSubmitting = true;
+        this.applyCsvLockState();
+        this.setStatus(message);
+        return true;
+    }
+
+    endCsvOperation() {
+        this.state.csvSubmitting = false;
+        this.applyCsvLockState();
+    }
+
     applyCsvLockState() {
         const page = this;
-        const locked = page.state.truncate.submitting || page.state.truncate.serverLock;
+        const locked = page.isOperationLocked();
         [
             'csvExportButton',
             'csvImportSubmit',
             'csvImportFile',
             'truncateButton',
-            'truncateConfirmButton',
         ].forEach((key) => {
             page.$el(key).prop('disabled', locked);
         });
-        if (locked) {
-            page.$el('csvHistoryTable').find('button').prop('disabled', true);
-        }
+        page.$el('csvHistoryTable').find('button').prop('disabled', locked);
+        page.updateTruncateConfirmState();
     }
 
     renderCsvHistory(files) {
@@ -444,7 +462,7 @@ export class CatalogCsvPage {
         const page = this;
         page.$el('truncateForm')[0].reset();
         page.$el('truncateModalError').text('');
-        page.$el('truncateConfirmButton').prop('disabled', true);
+        page.updateTruncateConfirmState();
         page.$el('truncateModal').removeAttr('hidden');
         page.$el('truncateBackdrop').removeAttr('hidden');
         window.setTimeout(() => {
@@ -466,19 +484,16 @@ export class CatalogCsvPage {
             .trim()
             .toUpperCase();
         const reason = page.$el('truncateReasonInput').val().toString().trim();
-        page.$el('truncateConfirmButton').prop('disabled', !(token === page.TRUNCATE_TOKEN && reason.length > 0));
-        page.$el('truncateModalError').text('');
+        const disabled = page.isOperationLocked() || !(token === page.TRUNCATE_TOKEN && reason.length > 0);
+        page.$el('truncateConfirmButton').prop('disabled', disabled).toggleClass('fi-disabled', disabled);
     }
 
     bindCsvEvents() {
         const page = this;
         page.$el('csvExportButton').on('click', async () => {
-            if (page.state.truncate.submitting || page.state.truncate.serverLock) {
-                page.setStatus('Catalog truncate in progress. Try again after it completes.', true);
+            if (!page.beginCsvOperation('Exporting catalog CSV...')) {
                 return;
             }
-            const $button = page.$el('csvExportButton');
-            $button.prop('disabled', true);
             try {
                 const response = await page.postJson('v1.exportCsv', {});
                 if (!response.success) {
@@ -495,14 +510,13 @@ export class CatalogCsvPage {
                 console.error(error);
                 page.setStatusWithError('Failed to export catalog CSV.', error);
             } finally {
-                $button.prop('disabled', false);
+                page.endCsvOperation();
             }
         });
 
         page.$el('csvImportForm').on('submit', async (event) => {
             event.preventDefault();
-            if (page.state.truncate.submitting || page.state.truncate.serverLock) {
-                page.setStatus('Catalog truncate in progress. CSV import disabled until it completes.', true);
+            if (page.isOperationLocked()) {
                 return;
             }
             const fileInput = page.$el('csvImportFile')[0];
@@ -512,8 +526,9 @@ export class CatalogCsvPage {
             }
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
-            const $submit = page.$el('csvImportSubmit');
-            $submit.prop('disabled', true);
+            if (!page.beginCsvOperation('Importing CSV snapshot. Please wait for completion...')) {
+                return;
+            }
             try {
                 const response = await page.postMultipart('v1.importCsv', formData);
                 if (!response.success) {
@@ -529,7 +544,7 @@ export class CatalogCsvPage {
                 console.error(error);
                 page.setStatusWithError('Failed to import CSV.', error);
             } finally {
-                $submit.prop('disabled', false);
+                page.endCsvOperation();
             }
         });
 
@@ -543,8 +558,9 @@ export class CatalogCsvPage {
             if (!fileId) {
                 return;
             }
-            const $button = $(event.currentTarget);
-            $button.prop('disabled', true);
+            if (!page.beginCsvOperation('Restoring CSV snapshot. Please wait for completion...')) {
+                return;
+            }
             try {
                 const response = await page.postJson('v1.restoreCsv', { id: fileId });
                 if (!response.success) {
@@ -559,16 +575,19 @@ export class CatalogCsvPage {
                 console.error(error);
                 page.setStatusWithError('Failed to restore CSV file.', error);
             } finally {
-                $button.prop('disabled', false);
+                page.endCsvOperation();
             }
         });
 
         page.$el('csvHistoryTable').on('click', 'button[data-csv-delete]', async (event) => {
             const fileId = $(event.currentTarget).data('csv-delete');
-            if (!fileId) {
+            if (!fileId || page.isOperationLocked()) {
                 return;
             }
             if (!window.confirm('Delete this CSV file?')) {
+                return;
+            }
+            if (!page.beginCsvOperation('Deleting CSV file...')) {
                 return;
             }
             try {
@@ -582,6 +601,8 @@ export class CatalogCsvPage {
             } catch (error) {
                 console.error(error);
                 page.setStatusWithError('Failed to delete CSV file.', error);
+            } finally {
+                page.endCsvOperation();
             }
         });
     }
@@ -589,15 +610,19 @@ export class CatalogCsvPage {
     bindTruncateEvents() {
         const page = this;
         page.$el('truncateButton').on('click', () => {
-            if (page.state.truncate.submitting || page.state.truncate.serverLock) {
-                page.setStatus('Catalog truncate already in progress. Please wait for it to finish.', true);
+            if (page.isOperationLocked()) {
+                page.setStatus('Another catalog operation is in progress. Please wait for it to finish.', true);
                 return;
             }
             page.openTruncateModal();
         });
 
-        page.$el('truncateConfirmInput').on('input', page.updateTruncateConfirmState);
-        page.$el('truncateReasonInput').on('input', page.updateTruncateConfirmState);
+        const updateConfirmation = () => {
+            page.$el('truncateModalError').text('');
+            page.updateTruncateConfirmState();
+        };
+        page.$el('truncateConfirmInput').on('input', updateConfirmation);
+        page.$el('truncateReasonInput').on('input', updateConfirmation);
 
         page.$el('truncateCancelButton').on('click', () => {
             page.closeTruncateModal();
@@ -605,8 +630,8 @@ export class CatalogCsvPage {
 
         page.$el('truncateForm').on('submit', async (event) => {
             event.preventDefault();
-            if (page.state.truncate.submitting || page.state.truncate.serverLock) {
-                page.$el('truncateModalError').text('Another truncate is running. Try again once it completes.');
+            if (page.isOperationLocked()) {
+                page.$el('truncateModalError').text('Another catalog operation is running. Try again once it completes.');
                 return;
             }
             const confirmToken = page.$el('truncateConfirmInput')
@@ -626,6 +651,8 @@ export class CatalogCsvPage {
             };
             page.state.truncate.submitting = true;
             page.applyCsvLockState();
+            page.$el('truncateModalError').text('');
+            page.setStatus('Truncating catalog...');
             try {
                 const response = await page.postJson('v1.truncateCatalog', payload);
                 if (!response.success) {
@@ -643,8 +670,8 @@ export class CatalogCsvPage {
                 const message = AppError.buildUserMessage('Unable to truncate catalog.', error?.correlationId);
                 page.$el('truncateModalError').text(message);
                 page.setStatusWithError('Unable to truncate catalog.', error);
-                page.state.truncate.submitting = false;
             } finally {
+                page.state.truncate.submitting = false;
                 page.applyCsvLockState();
             }
         });

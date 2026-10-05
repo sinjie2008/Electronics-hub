@@ -108,6 +108,7 @@ jobs:
         run: |
           npm ci
           npm run build
+          npm run test:catalog-csv
 
       - name: Check generated Catalog assets are current
         run: git diff --exit-code -- Modules/Catalog/public/assets

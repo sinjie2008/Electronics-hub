@@ -1,7 +1,7 @@
 {
   "css/catalog_ui.css": "fbb2fdd797cc6794",
-  "css/catalog-native-theme.css": "65d8b7890e5f691d",
-  "css/catalog-native.css": "1f0261ec0d926715",
+  "css/catalog-native-theme.css": "0f670fea178f3ef7",
+  "css/catalog-native.css": "480fc01fb426d9bf",
   "css/catalog-shell.css": "edf771583348bf8b",
   "css/catalog-vendor.css": "f091c86a90d5a5e3",
   "css/global_typst_template.css": "299782352e3a575f",
@@ -11,7 +11,7 @@
   "css/spec_search.css": "f6618cd092f6bd38",
   "js/app_error.js": "63d81086c4dfa46f",
   "js/app_loading.js": "de3fefc895c21cbd",
-  "js/catalog_csv.js": "1bcd2f36e9b44824",
+  "js/catalog_csv.js": "ac3dbc14f1a3cc68",
   "js/catalog_ui.js": "9921df5febe55f90",
   "js/catalog-request.js": "e8aa7a4507a1b226",
   "js/catalog-workspace.js": "377e0dae95b6943c",

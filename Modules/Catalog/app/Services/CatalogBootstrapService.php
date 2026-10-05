@@ -15,10 +15,6 @@ final class CatalogBootstrapService
 
     public function bootstrap(): void
     {
-        $this->connection->update(
-            'UPDATE category SET typst_templating_enabled = latex_templating_enabled
-             WHERE typst_templating_enabled IS NULL OR typst_templating_enabled = 0'
-        );
         $this->ensureMetadataDefaults();
         $this->seedInitialData();
     }

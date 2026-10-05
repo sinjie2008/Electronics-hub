@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Catalog\Repositories;
 
 use Illuminate\Database\Connection;
+use Modules\Catalog\Services\SeriesFieldService;
 use Modules\Catalog\Support\Config;
 
 /**
@@ -103,7 +104,41 @@ final class CatalogCsvRepository
     }
 
     /**
-     * Replaces custom values from a CSV row while preserving field iteration and statement reuse.
+     * @param  list<array{series_id: int, field_key: string, label: string, field_type: string, field_scope: string, sort_order: int}>  $fields
+     */
+    public function insertProductFieldsFromImport(array $fields): void
+    {
+        foreach (array_chunk($fields, 500) as $chunk) {
+            $this->connection->table('series_custom_field')->insert($chunk);
+        }
+    }
+
+    /**
+     * Updates only CSV field ordering, preserving each field's configuration.
+     *
+     * @param  array<int, int>  $orders
+     */
+    public function updateProductFieldSortOrders(int $seriesId, array $orders): void
+    {
+        foreach (array_chunk($orders, 500, true) as $chunk) {
+            $cases = [];
+            $bindings = [];
+            foreach ($chunk as $fieldId => $sortOrder) {
+                $cases[] = 'WHEN ? THEN ?';
+                $bindings[] = $fieldId;
+                $bindings[] = $sortOrder;
+            }
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+            $this->connection->update(
+                'UPDATE series_custom_field SET sort_order = CASE id '.implode(' ', $cases).' END
+                 WHERE series_id = ? AND field_scope = ? AND id IN ('.$placeholders.')',
+                [...$bindings, $seriesId, SeriesFieldService::SCOPE_PRODUCT, ...array_keys($chunk)]
+            );
+        }
+    }
+
+    /**
+     * Replaces custom values from a CSV row using bounded bulk inserts.
      *
      * @param  array<string, mixed>  $customValues
      * @param  array<string, array<string, mixed>>  $seriesFieldMap
@@ -119,6 +154,7 @@ final class CatalogCsvRepository
             return;
         }
 
+        $rows = [];
         foreach ($customValues as $fieldKey => $value) {
             $value = trim((string) $value);
             if ($value === '') {
@@ -127,11 +163,15 @@ final class CatalogCsvRepository
             if (! isset($seriesFieldMap[$fieldKey])) {
                 continue;
             }
-            $fieldId = (int) $seriesFieldMap[$fieldKey]['id'];
-            $this->connection->insert(
-                'INSERT INTO product_custom_field_value (product_id, series_custom_field_id, value) VALUES (?, ?, ?)',
-                [$productId, $fieldId, $value]
-            );
+            $rows[] = [
+                'product_id' => $productId,
+                'series_custom_field_id' => (int) $seriesFieldMap[$fieldKey]['id'],
+                'value' => $value,
+            ];
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            $this->connection->table('product_custom_field_value')->insert($chunk);
         }
     }
 

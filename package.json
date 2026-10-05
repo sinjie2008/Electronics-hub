@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "node Modules/Catalog/scripts/build-assets.mjs && vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:catalog-csv": "node --test tests/CatalogCsvPage.test.mjs"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.3.3",
