@@ -18,7 +18,7 @@ it('isolates document processes from application files, inherited secrets and ho
     putenv('CATALOG_COMPILER_SENTINEL=private-value');
     try {
         $result = (new CompilerRunner)->run('/bin/bash', ['-c',
-            'test ! -e '.escapeshellarg($sentinel).' && test ! -e /workspace/Electronics-hub/.env && test -z "$CATALOG_COMPILER_SENTINEL" && ! (exec 3<>/dev/tcp/127.0.0.1/3306) 2>/dev/null && printf isolated',
+            'test ! -e '.escapeshellarg($sentinel).' && test ! -e '.escapeshellarg(base_path('.env')).' && test -z "$CATALOG_COMPILER_SENTINEL" && ! (exec 3<>/dev/tcp/127.0.0.1/3306) 2>/dev/null && printf isolated',
         ], $this->compilerJob);
         expect($result['exitCode'])->toBe(0)->and($result['stdout'])->toBe('isolated');
     } finally {

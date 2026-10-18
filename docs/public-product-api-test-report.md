@@ -2,13 +2,13 @@
 
 Verified in Codex Cloud Linux on 2026-10-18. Target baseline: `7f55314392d6db53db170e2e41a64f7e6e2229c3` (`codex/integrate-boilerplate-catalog`). Source: `c10faf4b5314668f7695a9c138a8e9333bee469d` (`plan/public-product-api-v1`). Work branch: `codex/secure-public-product-api-v1`.
 
-The baseline ran **146 tests / 1,203 assertions** successfully before implementation. The final local complete run executed **338 tests / 3,915 assertions**, with **0 failures, 0 errors and 0 skips**; exit **0**, duration **62.74 seconds**. The additional real-source differential execution passed **50/50 cases**, exit **0**. Counts below overlap across functional areas; the complete-run total is not their sum.
+The baseline ran **146 tests / 1,203 assertions** successfully before implementation. The final local complete run executed **340 tests / 3,933 assertions**, with **0 failures, 0 errors and 0 skips**; exit **0**, duration **61.00 seconds**. The additional real-source differential execution passed **50/50 cases**, exit **0**. Counts below overlap across functional areas; the complete-run total is not their sum.
 
 ## Verification table
 
 | Test area | Passed | Failed | Not run | Evidence |
 | --- | --- | --- | --- | --- |
-| Public API | 130 cases / 479 assertions | 0 | 0 | `tests/Feature/PublicProductApiTest.php`; all ten endpoints, empty/missing/type/error/order/query/method/header/Unicode/duplicate cases; 2,000-part series |
+| Public API | 132 cases / 497 assertions | 0 | 0 | `tests/Feature/PublicProductApiTest.php`; all ten endpoints, empty/missing/type/error/order/query/method/header/Unicode/duplicate cases; 2,000-part series |
 | Contract parity | 50/50 source/target cases | 0 | 0 | `tests/Support/ComparePublicProductApi.php`; source-generated `tests/Fixtures/public-product-api/source-oracle.json`; only top-level correlation ID normalized |
 | Security | 54 authorization/transport cases; 4 compiler-boundary cases | 0 | 0 | `CatalogApiSecurityTest`: 345 assertions; `CatalogCompilerSecurityTest`: 12 assertions; real expired tokens, raw JSON/multipart bypass regressions, permissions, inactive accounts, CSRF, protected media, CORS/throttle and malformed encodings |
 | Catalog CRUD | Covered in 15 Catalog integration and 26 Catalog Filament cases | 0 | 0 | Real category/series/product/field/metadata writes and underlying SQL values; authorization boundaries; live public visibility of changes |
@@ -18,8 +18,8 @@ The baseline ran **146 tests / 1,203 assertions** successfully before implementa
 | Passport/IAM | 11 Passport cases / 100 assertions plus existing IAM/session tests | 0 | 0 | PKCE, real token issuance, scopes + policy checks, inactive users, role/permission protections; real HTTP Passport write also passed |
 | Database | 1 legacy/fresh Catalog migration case / 14 assertions; full MySQL suite passed | 0 | 0 | Separate `electronics_hub_testing` and `electronics_catalog_testing`; protected migration connection checks and idempotent seeds |
 | Module disable/enable | 3 cases / 1,847 assertions | 0 | 0 | `CatalogModuleLifecycleTest` + `CatalogLifecycleProbe`; long-lived application and fresh cached/uncached kernels; every alias/page/file kind, 20 Filament URLs, host services, all table/ledger/file hashes |
-| Full regression | 338 tests / 3,915 assertions | 0 | 0 | Final complete Pest JUnit: tests=338, failures=0, errors=0, skipped=0; includes Core/IAM/System, Scout, settings/audit, AI/MCP fakes, backups, Redis and PDF integrations |
-| HTTP integration | 1 real-socket case / 29 assertions | 0 | 0 | `CatalogHttpTest`: all ten public URLs, anonymous denial, JWT-authorized write, browser login, real CSRF 419/200 and Spec Search |
+| Full regression | 340 tests / 3,933 assertions | 0 | 0 | Final complete Pest JUnit: tests=340, failures=0, errors=0, skipped=0; includes Core/IAM/System, Scout, settings/audit, AI/MCP fakes, backups, Redis and PDF integrations |
+| HTTP integration | 1 real-socket case / 29 assertions | 0 | 0 | `CatalogHttpTest`: all ten public URLs, anonymous denial, JWT-authorized write, real HTTP session login, CSRF 419/200 and Spec Search |
 | WordPress integration | Reproducible source-contract JSON checks passed | 0 | Live WordPress site | No authorized WordPress installation supplied; no WordPress write/deployment attempted |
 
 ## Environment and exact commands
@@ -33,6 +33,9 @@ cd /workspace/Electronics-hub
 export PATH=/workspace/onboarding/native-php/bin:/workspace/onboarding/typst-x86_64-unknown-linux-musl:$PATH
 
 composer validate --strict
+composer install --no-interaction --prefer-dist --no-progress --no-plugins --no-scripts
+composer dump-autoload --no-interaction
+git diff --exit-code -- composer.lock
 composer audit
 npm ci --cache /workspace/.npm-cache
 npm run build
@@ -54,7 +57,7 @@ RUN_REDIS_INTEGRATION=true RUN_CATALOG_COMPILER_INTEGRATION=true \
 php artisan test --compact --log-junit /tmp/public-api-evidence/final-junit.xml
 ```
 
-Every final command above exited **0**. Composer audit returned **“No security vulnerability advisories found.”** Larastan returned **“No errors.”** Both asset builds passed and Catalog assets/manifest match their source build. No dependency declarations or lockfiles changed.
+Every final command above exited **0**. The fresh Composer installation was additionally reproduced in a disposable tracked-source copy: Laravel remained **13.34.0**, Catalog autoloading and application scripts worked, and the lockfile was byte-identical. Composer audit returned **“No security vulnerability advisories found.”** Larastan returned **“No errors.”** Both asset builds passed and Catalog assets/manifest match their source build. No dependency declarations or lockfiles changed.
 
 Focused reruns used the same database/integration environment followed by:
 
@@ -78,16 +81,18 @@ The runner verifies the source HEAD, uses deterministic fixtures and existing so
 ## Diagnosed failures and repairs
 
 - Initial environment defaults allowed only 128 MiB and the first-install merge plugin upgraded a dependency. Onboarding restored the committed dependency versions, used 512 MiB and installed from lockfiles; Laravel 13.34.0 was verified.
+- CI's fresh-install lock guard reproduced the merge plugin upgrading Laravel 13.34.0 to 13.35.0 even with `--no-scripts`. The install phase now also uses `--no-plugins`, then a separate normal `dump-autoload` loads plugins/module mappings and runs application scripts. A disposable fresh-install reproduction passed without lockfile changes.
 - Exact legacy `/api/series/details.php` was initially shadowed by the public path matcher. Route registration now puts exact legacy aliases first; enabled/disabled/cached tests caught and verified the fix.
 - Independent Astra review found content-type/multipart create-vs-update permission bypasses, a missing Spec Search CSRF token and ownership of disabled compatibility mounts. All were fixed with executable regressions; the follow-up review found no remaining concrete blocker.
 - Initial regressions exposed asset-cache header drift and a safe legacy `Missing ID` response change. Asset compatibility and the documented safe error were restored; sensitive internal diagnostics remain removed.
 - The new HTTP test initially used a different Passport signing-key path in its child process when run after existing OAuth tests. It now generates isolated ephemeral keys shared by both processes and passes in that order and the full suite. No production keys or credentials were committed.
 - Invalid UTF-8 is rejected before Symfony route matching can produce a debug error. Public `Cache-Control` uses the existing explicit-header bag to preserve source `no-store` exactly.
+- TRACE/CONNECT now receive the source 405 response before Laravel's method matcher. Framework debug errors are sanitized without dropping public cache/CORS/correlation headers; dedicated regressions and independent follow-up review verified both changes.
 
 No assertions were disabled and no tests were deleted. The existing disabled-Filament assertion changed from 403 to the required 404; successful legacy regressions now authenticate explicitly rather than retaining anonymous write access.
 
 ## CI and limits
 
-Local verification is complete. GitHub Actions status is pending initial branch publication; the PR check result will be recorded before final delivery. The workflow now installs bubblewrap/prlimit alongside its existing MySQL/Redis/PDF prerequisites.
+Local verification is complete. Draft PR [#3](https://github.com/sinjie2008/Electronics-hub/pull/3) is published. Initial Actions run [39117760932](https://github.com/sinjie2008/Electronics-hub/actions/runs/39117760932) passed dependency audit, both builds, migrations, caches, Pint and Larastan, then failed the test step (exit 2). Run [39118537535](https://github.com/sinjie2008/Electronics-hub/actions/runs/39118537535) exposed fresh-install dependency drift at the new lock guard; the drift is reproduced and repaired as above. Log downloads are blocked by the cloud network; subsequent runs emit JUnit failure annotations through the accessible GitHub API. Remote verification remains pending. The workflow installs bubblewrap/prlimit and preserves locked Composer dependencies during first installation.
 
-Live WordPress, production TLS/reverse-proxy/static-server configuration, production load/capacity and Octane/Swoole were not run and are not claimed. The tested long-lived application is a Laravel kernel/activator lifecycle, not an Octane deployment. The selected-series in-memory natural sort/facets and per-job rather than global compiler quotas are explicit operational limits. No production migration, deployment or merge occurred.
+Live WordPress, interactive browser-engine automation, production TLS/reverse-proxy/static-server configuration, production load/capacity and Octane/Swoole were not run and are not claimed. The tested long-lived application is a Laravel kernel/activator lifecycle, not an Octane deployment. The selected-series in-memory natural sort/facets and per-job rather than global compiler quotas are explicit operational limits. No production migration, deployment or merge occurred.

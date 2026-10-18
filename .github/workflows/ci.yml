@@ -126,7 +126,7 @@ jobs:
       - name: Install Composer dependencies
         run: |
           # Avoid the merge plugin's first-install dependency update; retain locked versions.
-          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          composer install --no-interaction --prefer-dist --no-progress --no-plugins --no-scripts
           composer dump-autoload --no-interaction
           git diff --exit-code -- composer.lock
 
