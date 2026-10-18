@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Modules\Catalog\Http\Middleware\CatalogBoundary;
+use Modules\Catalog\Http\Middleware\PublicApiHeaders;
 use Nwidart\Modules\Contracts\ActivatorInterface;
 use Tests\Support\CatalogTestDatabase;
 use Tests\Support\PublicProductApiFixture as Fixture;
@@ -78,6 +81,31 @@ it('reports database health without authentication or a synchronization requirem
             'data' => ['status' => 'ok', 'database' => 'connected', 'writeOperations' => false],
             'correlationId' => 'public-health',
         ]);
+});
+
+it('sanitizes framework debug errors while preserving public security and CORS headers', function () {
+    config(['catalog.public_api.allowed_origins' => ['https://catalog.example.test']]);
+    $request = Request::create('/api/tree');
+    $request->headers->set('Origin', 'https://catalog.example.test');
+    $request->headers->set('X-Correlation-ID', 'safe-public-error');
+
+    $response = (new CatalogBoundary)->handle($request, fn ($request) => (new PublicApiHeaders)->handle(
+        $request,
+        fn () => response()->json(['message' => '/private/file.php', 'exception' => 'RuntimeException', 'trace' => ['secret']], 400),
+    ));
+
+    expect($response->getStatusCode())->toBe(400)
+        ->and(json_decode($response->getContent(), true))->toBe([
+            'success' => false, 'errorCode' => 'REQUEST_REJECTED',
+            'message' => 'The Catalog request could not be completed.',
+            'details' => [], 'correlationId' => 'safe-public-error',
+        ])
+        ->and($response->headers->get('Cache-Control'))->toBe('no-store')
+        ->and($response->headers->get('Vary'))->toBe('Origin')
+        ->and($response->headers->get('Access-Control-Allow-Origin'))->toBe('https://catalog.example.test')
+        ->and($response->headers->get('Access-Control-Expose-Headers'))->toBe('X-Correlation-ID')
+        ->and($response->headers->get('X-Correlation-ID'))->toBe('safe-public-error')
+        ->and($response->headers->get('X-Content-Type-Options'))->toBe('nosniff');
 });
 
 it('orders the tree by display order and preserves node types duplicate slugs and Unicode', function () {
@@ -440,4 +468,11 @@ it('keeps secondary slug collisions distinct instead of resolving a different pr
 it('rejects invalid UTF-8 paths and queries through safe public error envelopes', function () {
     $this->getJson('/api/resolve/%FF')->assertUnprocessable()->assertJsonPath('errorCode', 'INVALID_PATH')->assertJsonMissingPath('trace');
     $this->getJson('/api/search?q=%FF')->assertUnprocessable()->assertJsonPath('errorCode', 'INVALID_QUERY')->assertJsonMissingPath('trace');
+});
+
+it('returns the safe GET-only source contract for methods Laravel does not include in Route any', function () {
+    $this->call('TRACE', '/api/tree')->assertMethodNotAllowed()->assertHeader('Allow', 'GET')
+        ->assertJsonPath('errorCode', 'METHOD_NOT_ALLOWED')->assertJsonMissingPath('trace');
+    $this->call('CONNECT', '/api/health')->assertMethodNotAllowed()->assertHeader('Allow', 'GET')
+        ->assertJsonPath('errorCode', 'METHOD_NOT_ALLOWED')->assertJsonMissingPath('trace');
 });

@@ -40,13 +40,13 @@ it('blocks TeX reads outside the job workspace while compiling a normal document
     $runner = new CompilerRunner;
     $result = $runner->run((string) config('catalog.settings.latex.default_binary'), ['-no-shell-escape', '-interaction=nonstopmode', '-halt-on-error', 'safe.tex'], $this->compilerJob);
     expect($result['exitCode'])->toBe(0)->and(File::get($this->compilerJob.'/safe.pdf'))->toStartWith('%PDF-');
-    File::put($this->compilerJob.'/unsafe.tex', '\\documentclass{article}\\begin{document}\\input{/workspace/Electronics-hub/.env}\\end{document}');
+    File::put($this->compilerJob.'/unsafe.tex', '\\documentclass{article}\\begin{document}\\input{'.base_path('.env').'}\\end{document}');
     $denied = $runner->run((string) config('catalog.settings.latex.default_binary'), ['-no-shell-escape', '-interaction=nonstopmode', '-halt-on-error', 'unsafe.tex'], $this->compilerJob);
     expect($denied['exitCode'])->not->toBe(0)->and(File::exists($this->compilerJob.'/unsafe.pdf'))->toBeFalse();
 });
 
 it('rejects Typst reads outside the private compiler root', function () {
-    File::put($this->compilerJob.'/unsafe.typ', '#read("/workspace/Electronics-hub/.env")');
+    File::put($this->compilerJob.'/unsafe.typ', '#read('.json_encode(base_path('.env')).')');
     $result = (new CompilerRunner)->run((string) config('catalog.settings.typst.binary'), ['compile', '--root', '/work', 'unsafe.typ', 'unsafe.pdf'], $this->compilerJob);
 
     expect($result['exitCode'])->not->toBe(0)->and(File::exists($this->compilerJob.'/unsafe.pdf'))->toBeFalse();

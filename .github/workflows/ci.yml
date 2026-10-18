@@ -124,7 +124,11 @@ jobs:
         run: composer validate --strict
 
       - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          # Avoid the merge plugin's first-install dependency update; retain locked versions.
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          composer dump-autoload --no-interaction
+          git diff --exit-code -- composer.lock
 
       - name: Audit locked Composer dependencies
         run: composer audit
@@ -178,4 +182,24 @@ jobs:
         run: composer run analyse
 
       - name: Run Pest feature and integration tests
-        run: php artisan test --compact
+        run: php artisan test --compact --log-junit "$RUNNER_TEMP/catalog-tests.xml"
+
+      - name: Report failing test diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          report = pathlib.Path(os.environ['RUNNER_TEMP']) / 'catalog-tests.xml'
+          if report.exists():
+              for case in ET.parse(report).iter('testcase'):
+                  for result in list(case):
+                      if result.tag in ('failure', 'error'):
+                          message = (case.get('name', '') + ': ' + (result.text or result.get('message', '')))[:6000]
+                          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                          print('::error title=Integration test failure::' + message)
+          else:
+              print('::error title=Test diagnostics::No JUnit report produced; inspect the failing step.')
+          PY
