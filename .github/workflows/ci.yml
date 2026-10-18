@@ -169,6 +169,7 @@ jobs:
         working-directory: Modules/Catalog
         run: |
           npm ci
+          npm run test:auth
           npm run build:assets
 
       - name: Check generated Catalog assets are current

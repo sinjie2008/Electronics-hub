@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:auth": "node --test tests/catalog-auth.test.mjs",
     "build": "node scripts/build-assets.mjs",
     "build:assets": "node scripts/build-assets.mjs"
   },

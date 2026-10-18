@@ -4,7 +4,7 @@ Laravel 13 / nWidart Modules v13 的原生 Catalog 模块，安装到宿主 Modu
 
 ## 安装
 
-需要 PHP 8.3+、mysqli、pdo_mysql、mbstring、fileinfo 和宿主 MySQL/MariaDB。PDF 功能需要 Typst / pdflatex、Linux bubblewrap / prlimit 和可用的用户命名空间；隔离不可用时拒绝编译。模块不附带编译器。Node.js 仅用于构建前端。
+需要 PHP 8.4.1+、mysqli、pdo_mysql、mbstring、fileinfo 和宿主 MySQL 8+。PDF 功能需要 Typst / pdflatex、Linux bubblewrap / prlimit 和可用的用户命名空间；隔离不可用时拒绝编译。模块不附带编译器。Node.js 仅用于构建前端。
 
 按 [nWidart v13 安装说明](https://laravelmodules.com/docs/13/getting-started/installation-and-setup) 设置宿主，在宿主 composer.json 合并以下设置：
 

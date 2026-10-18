@@ -6,7 +6,7 @@ Authoritative source: `sinjie2008/Foundational-Electronics-Core-Systems`, exact 
 
 ## Ownership and dependency map
 
-`Modules/Catalog/app/Http/ModuleRoutes.php` owns public and legacy URLs. `PublicProductApiController` validates bounded transport inputs, dispatches the source operations and preserves its flat envelopes. Request-scoped `PublicProductApiService` performs read-only queries through the existing `catalog.connection` MySQLi binding. It uses existing category/product/custom-field tables. There is no new database, product repository, publication status, synchronization job, dependency or migration.
+`Modules/Catalog/app/Http/ModuleRoutes.php` owns public and legacy URLs. `PublicProductApiController` validates bounded transport inputs, dispatches the source operations and preserves its flat envelopes. Request-scoped `PublicProductApiService` performs read-only queries through the existing `catalog.connection` MySQLi binding. It uses existing category/product/custom-field tables. There is no new database, product repository, publication status, synchronization job, Composer/npm dependency or migration.
 
 Existing hierarchy/product/field/metadata/CSV/Typst/LaTeX services continue to own writes. Filament continues to use `CatalogAdminService` and `CatalogPolicy`. Laravel PDO and Catalog MySQLi have separate transactions; a host transaction cannot roll back committed Catalog work.
 

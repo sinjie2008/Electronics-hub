@@ -4,8 +4,9 @@
     const unsafe = method => !['GET', 'HEAD', 'OPTIONS'].includes(String(method || 'GET').toUpperCase());
     const local = url => new URL(url, document.baseURI).origin === window.location.origin;
     window.catalogFetch = (url, options = {}) => {
-        const headers = new Headers(options.headers || {});
-        if (token && local(url) && unsafe(options.method)) headers.set('X-CSRF-TOKEN', token);
+        const request = url instanceof Request ? url : null;
+        const headers = new Headers(options.headers || request?.headers || {});
+        if (token && local(request?.url || url) && unsafe(options.method || request?.method)) headers.set('X-CSRF-TOKEN', token);
         return window.fetch(url, { ...options, headers, credentials: 'same-origin' });
     };
     if (window.jQuery) {
