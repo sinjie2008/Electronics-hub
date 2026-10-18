@@ -135,7 +135,7 @@ it('denies inactive Super Admin and every cached resource page when Catalog is d
     app('modules')->findOrFail('Catalog')->disable();
     expect($resource::getNavigationItems())->toBe([])->and($resource::canViewAny())->toBeFalse();
     foreach (['index', 'create', 'view', 'edit'] as $page) {
-        $this->get($resource::getUrl($page, ['record' => $record]))->assertForbidden();
+        $this->get($resource::getUrl($page, ['record' => $record]))->assertNotFound();
     }
     expect(fn () => $this->catalogAdmin->delete($this->catalogActor, $record))->toThrow(HttpException::class);
     expect($model::query()->whereKey($record->getKey())->exists())->toBeTrue();

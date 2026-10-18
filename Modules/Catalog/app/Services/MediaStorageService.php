@@ -140,12 +140,21 @@ final class MediaStorageService
         }
 
         $tmpPath = (string) ($file['tmp_name'] ?? '');
+        if (! is_file($tmpPath) || is_link($tmpPath) || filesize($tmpPath) > $this->maxBytes) {
+            throw new CatalogApiException('MEDIA_UPLOAD_ERROR', 'Invalid uploaded file.', 400);
+        }
         $mime = $this->detectMime($tmpPath);
         $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
 
-        $isImage = str_starts_with($mime, 'image/');
-        $isAllowedMime = in_array($mime, $this->allowedMime, true);
-        $isAllowedExt = in_array($extension, $this->allowedExtensions, true);
+        $isImage = in_array($mime, ['image/png', 'image/jpeg', 'image/gif', 'image/webp'], true)
+            && @getimagesize($tmpPath) !== false;
+        $isAllowedMime = $mime === 'application/pdf' && in_array($mime, $this->allowedMime, true)
+            && file_get_contents($tmpPath, false, null, 0, 5) === '%PDF-';
+        $header = file_get_contents($tmpPath, false, null, 0, 12);
+        $glbHeader = strlen((string) $header) === 12 ? unpack('a4magic/Vversion/Vlength', $header) : [];
+        $isAllowedExt = $extension === 'glb' && in_array($extension, $this->allowedExtensions, true)
+            && ($glbHeader['magic'] ?? '') === 'glTF' && ($glbHeader['version'] ?? 0) === 2
+            && ($glbHeader['length'] ?? 0) === filesize($tmpPath);
 
         if (! $isImage && ! $isAllowedMime && ! $isAllowedExt) {
             throw new CatalogApiException('MEDIA_TYPE_INVALID', 'Unsupported file type (images, PDF, GLB only).', 400);
@@ -218,17 +227,22 @@ final class MediaStorageService
 
     private function resolveAbsolutePath(string $relativePath): string
     {
+        if (str_contains($relativePath, "\0") || str_contains($relativePath, ':')
+            || str_starts_with($relativePath, '/') || str_contains($relativePath, '\\')
+            || in_array('..', explode('/', $relativePath), true)) {
+            throw new CatalogApiException('MEDIA_PATH_INVALID', 'Invalid media path.', 400);
+        }
         $clean = str_replace('\\', '/', $relativePath);
         $clean = preg_replace('#/+#', '/', $clean);
         $clean = ltrim($clean, '/');
         $absolute = $this->rootDir.DIRECTORY_SEPARATOR.$clean;
         $realRoot = realpath($this->rootDir);
         $realTarget = realpath($absolute) ?: $absolute;
-        if ($realRoot !== false && str_starts_with($realTarget, $realRoot) === false) {
+        if ($realRoot === false || ! str_starts_with($realTarget, $realRoot.DIRECTORY_SEPARATOR)) {
             throw new CatalogApiException('MEDIA_PATH_INVALID', 'Invalid media path.', 400);
         }
 
-        return $absolute;
+        return $realTarget;
     }
 
     private function ensureRootDir(): void

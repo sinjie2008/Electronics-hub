@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Modules\IAM\Models\Role;
 use Symfony\Component\Process\Process;
 use Tests\Support\CatalogTestDatabase;
 
@@ -11,6 +13,10 @@ beforeEach(function () {
     }
 
     $this->catalogStorageRoot = CatalogTestDatabase::prepare();
+    $this->seed();
+    $actor = User::factory()->create();
+    $actor->assignRole(Role::SUPER_ADMIN);
+    $this->actingAs($actor, 'web');
 });
 
 afterEach(function () {

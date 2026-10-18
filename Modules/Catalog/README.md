@@ -4,7 +4,7 @@ Laravel 13 / nWidart Modules v13 的原生 Catalog 模块，安装到宿主 Modu
 
 ## 安装
 
-需要 PHP 8.3+、mysqli、pdo_mysql、mbstring、fileinfo 和宿主 MySQL/MariaDB。PDF 功能需要 Typst / pdflatex；模块不附带编译器。Node.js 仅用于构建前端。
+需要 PHP 8.3+、mysqli、pdo_mysql、mbstring、fileinfo 和宿主 MySQL/MariaDB。PDF 功能需要 Typst / pdflatex、Linux bubblewrap / prlimit 和可用的用户命名空间；隔离不可用时拒绝编译。模块不附带编译器。Node.js 仅用于构建前端。
 
 按 [nWidart v13 安装说明](https://laravelmodules.com/docs/13/getting-started/installation-and-setup) 设置宿主，在宿主 composer.json 合并以下设置：
 
@@ -60,7 +60,7 @@ return [
 
 legacy_urls 保留 root /catalog.php、/api/*、六个 .html 页面及 /storage/*。原来以 public/ 为 document root 的安装使用 root_typst_api=public。原来暴露项目根目录的安装使用 root_typst_api=root，使 root /api/typst/templates.php 和 variables.php 保留原 adapter 行为；project_root_urls 同时提供 /public/*。/catalog/api/typst/* 始终是原 public file API，/legacy/api/typst/* 明确提供原 root adapter。
 
-middleware 默认为空，保留现有公开 API、方法和无 CSRF token 的调用。宿主全局 middleware 仍生效；认证/CORS 由宿主按客户端需求配置。TrimStrings / ConvertEmptyStringsToNull 仅对精确匹配的 Catalog API 地址跳过，避免修改原输入和宿主其他页面。
+middleware 是附加 middleware；内置认证与权限检查不可由该设置移除。仅 `/api/` 下十个 Public Product API 接口允许匿名 GET。旧 API、管理页面与私有文件需要有效 session 或 Passport 用户 token 和 Catalog 权限；session 写操作需要 CSRF token。TrimStrings / ConvertEmptyStringsToNull 仅对精确匹配的 Catalog API 地址跳过，避免修改原输入和宿主其他页面。
 
 ## 数据安装和升级
 

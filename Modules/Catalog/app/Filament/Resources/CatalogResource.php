@@ -6,12 +6,14 @@ namespace Modules\Catalog\Filament\Resources;
 
 use App\Models\User;
 use Filament\Actions\Action;
+use Filament\Panel;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Modules\Catalog\Filament\Concerns\HasCatalogDynamicFields;
+use Modules\Catalog\Http\Middleware\ModuleEnabled;
 use Modules\Catalog\Models\CatalogModel;
 use Modules\Catalog\Models\CatalogNode;
 use Modules\Catalog\Services\CatalogAdminService;
@@ -19,6 +21,11 @@ use Modules\Catalog\Services\CatalogAdminService;
 abstract class CatalogResource extends Resource
 {
     use HasCatalogDynamicFields;
+
+    public static function getRouteMiddleware(Panel $panel): string|array
+    {
+        return [...(array) parent::getRouteMiddleware($panel), ModuleEnabled::class];
+    }
 
     public static function canViewAny(): bool
     {

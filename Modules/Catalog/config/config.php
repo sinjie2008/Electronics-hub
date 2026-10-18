@@ -10,9 +10,13 @@ return [
     'base_url' => env('CATALOG_BASE_URL'),
     'connection' => env('CATALOG_DB_CONNECTION'),
     'storage_root' => env('CATALOG_STORAGE_ROOT'),
-    // Existing APIs are public and do not require session/CSRF middleware.
-    // Add the host's chosen access/CORS middleware here when integrating clients.
+    // Additional middleware cannot remove the built-in authentication boundary.
     'middleware' => [],
+    'public_api' => [
+        'requests_per_minute' => 120,
+        // Exact HTTPS consumer origins; no wildcard or credentialed CORS.
+        'allowed_origins' => [],
+    ],
     'settings' => [
         'seed_name' => 'initial_catalog_v1',
         'storage' => [],

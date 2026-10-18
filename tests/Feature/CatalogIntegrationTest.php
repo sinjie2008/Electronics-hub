@@ -15,12 +15,17 @@ use Modules\Catalog\Policies\CatalogPolicy;
 use Modules\Catalog\Services\CatalogAdminService;
 use Modules\Catalog\Services\CatalogCsvService;
 use Modules\IAM\Models\Permission;
+use Modules\IAM\Models\Role;
 use Nwidart\Modules\Contracts\ActivatorInterface;
 use Symfony\Component\Process\Process;
 use Tests\Support\CatalogTestDatabase;
 
 beforeEach(function () {
     $this->catalogStorageRoot = CatalogTestDatabase::prepare();
+    $this->seed();
+    $actor = User::factory()->create();
+    $actor->assignRole(Role::SUPER_ADMIN);
+    $this->actingAs($actor, 'web');
     $this->catalogOriginalStatusesPath = config('modules.activators.file.statuses-file');
     $this->catalogStatusesPath = storage_path('framework/testing/catalog-status-'.bin2hex(random_bytes(8)).'.json');
     File::ensureDirectoryExists(dirname($this->catalogStatusesPath));

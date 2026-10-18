@@ -47,7 +47,9 @@ final class StorageController
 
         return new BinaryFileResponse($file, 200, [
             'Content-Type' => $contentType,
-            'Cache-Control' => $versioned ? 'public, max-age=31536000, immutable' : 'no-cache, private',
+            'Cache-Control' => $versioned ? 'public, max-age=31536000, immutable' : ($kind === 'assets' ? 'no-cache, private' : 'no-store, private'),
+            'X-Content-Type-Options' => 'nosniff',
+            ...($kind !== 'assets' ? ['Content-Disposition' => 'attachment; filename="'.str_replace('"', '', basename($file)).'"'] : []),
         ], public: $versioned);
     }
 }

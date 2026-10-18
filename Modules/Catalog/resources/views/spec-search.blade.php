@@ -4,6 +4,7 @@
 <head>
     <base href="{{ $catalogBaseUrl }}/">
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Search / Spec Search</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="assets/css/sidebar-nav.css?v={{ $catalogAssetVersions['css/sidebar-nav.css'] }}">
     <link rel="stylesheet" href="assets/css/spec_search.css?v={{ $catalogAssetVersions['css/spec_search.css'] }}">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/catalog-auth.js?v={{ $catalogAssetVersions['js/catalog-auth.js'] }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js" defer></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js" defer></script>

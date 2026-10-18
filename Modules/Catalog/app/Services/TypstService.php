@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Catalog\Services;
 
 use Modules\Catalog\Repositories\TypstRepository;
+use Modules\Catalog\Support\CompilerRunner;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
 use mysqli;
@@ -211,74 +212,45 @@ final class TypstService
      */
     public function compileTypst(string $typstCode, ?int $seriesId = null): array
     {
-        // Prepare build directory up front so assets can be staged for relative loading.
-        $buildDir = $this->buildStorageDir;
-        if (! is_dir($buildDir)) {
-            mkdir($buildDir, 0777, true);
+        CompilerRunner::assertModuleEnabled();
+        CompilerRunner::assertSourceSize($typstCode);
+        $buildDir = CompilerRunner::createJobDirectory($this->buildStorageDir);
+        $this->copiedAssets = [];
+        try {
+            $dataHeaderResult = $this->generateDataHeader($seriesId, $buildDir);
+            $placeholderValues = $this->buildPlaceholderMap($dataHeaderResult['safeData']);
+            $renderedTypst = $this->replacePlaceholders($typstCode, $placeholderValues);
+            $fullSource = $dataHeaderResult['header']."\n".$renderedTypst;
+            CompilerRunner::assertSourceSize($fullSource);
+            $fullSource = $dataHeaderResult['header']."\n".$this->stageInlineAssets($renderedTypst, $buildDir);
+            $jobId = uniqid('typst_');
+            if (file_put_contents($buildDir.'/'.$jobId.'.typ', $fullSource) === false) {
+                throw new RuntimeException('Unable to write document source.');
+            }
+            $pdfFile = $buildDir.'/'.$jobId.'.pdf';
+            $result = (new CompilerRunner)->run($this->typstBinary, [
+                'compile', '--root', '/work', $jobId.'.typ', $jobId.'.pdf',
+            ], $buildDir);
+            if ($result['exitCode'] !== 0 || ! is_file($pdfFile) || is_link($pdfFile)) {
+                throw new RuntimeException("Typst Compilation failed:\n".$result['stdout'].$result['stderr']);
+            }
+            if (! is_dir($this->pdfStorageDir) && ! mkdir($this->pdfStorageDir, 0775, true) && ! is_dir($this->pdfStorageDir)) {
+                throw new RuntimeException('Unable to create PDF storage.');
+            }
+            $finalPdfName = ($seriesId ? 'series_'.$seriesId : 'global').'_'.date('YmdHis').'_'.bin2hex(random_bytes(8)).'.pdf';
+            $finalPdfPath = str_replace('\\', '/', (realpath($this->pdfStorageDir) ?: $this->pdfStorageDir).'/'.$finalPdfName);
+            if (! rename($pdfFile, $finalPdfPath)) {
+                throw new RuntimeException('Unable to store compiled PDF.');
+            }
+
+            return [
+                'url' => $this->pdfUrlPrefix.'/'.$finalPdfName,
+                'path' => $finalPdfPath,
+            ];
+        } finally {
+            CompilerRunner::cleanup($buildDir);
+            $this->copiedAssets = [];
         }
-
-        $jobId = uniqid('typst_');
-
-        // 1. Generate Data Header
-        $dataHeaderResult = $this->generateDataHeader($seriesId, $buildDir);
-        $dataHeader = $dataHeaderResult['header'];
-        $safeData = $dataHeaderResult['safeData'];
-        $placeholderValues = $this->buildPlaceholderMap($safeData);
-
-        // 2. Combine Header and Code
-        // We prepend the data variables so they are available in the user's script and replace {{placeholders}} with concrete values.
-        $renderedTypst = $this->replacePlaceholders($typstCode, $placeholderValues);
-        $fullSource = $dataHeader."\n".$renderedTypst;
-
-        // Stage inline assets referenced directly in the Typst code (e.g., #image("foo.png")).
-        $this->stageInlineAssets($renderedTypst, $buildDir);
-
-        // 3. Save to Temp File
-        $inputFile = $buildDir.'/'.$jobId.'.typ';
-        file_put_contents($inputFile, $fullSource);
-
-        // 4. Compile
-        // Command: typst compile <input> <output>
-        // We set the root to the project root so images can be resolved relative to it if needed?
-        // Actually, Typst defaults root to input file dir. We might want to set --root.
-        // Let's assume images are absolute or relative to public.
-        // For now, simple compilation.
-
-        $pdfFile = $buildDir.'/'.$jobId.'.pdf';
-
-        // Escape paths
-        $cmd = escapeshellcmd($this->typstBinary).' compile '.escapeshellarg($inputFile).' '.escapeshellarg($pdfFile);
-
-        // Capture output
-        $output = [];
-        $returnVar = 0;
-        exec($cmd.' 2>&1', $output, $returnVar);
-
-        if ($returnVar !== 0 || ! file_exists($pdfFile)) {
-            // Clean up?
-            // throw new RuntimeException("Typst Compilation failed.\nCommand: $cmd\nOutput: " . implode("\n", $output));
-            // Return error structure instead of throwing, so UI can show it?
-            // The LatexService threw exception.
-            throw new RuntimeException("Typst Compilation failed:\n".implode("\n", $output));
-        }
-
-        // 5. Move to Public Storage
-        $storageDir = $this->pdfStorageDir;
-        if (! is_dir($storageDir)) {
-            mkdir($storageDir, 0777, true);
-        }
-
-        $finalPdfName = ($seriesId ? 'series_'.$seriesId : 'global').'_'.date('YmdHis').'.pdf';
-        $finalPdfPath = str_replace('\\', '/', realpath($storageDir).'/'.$finalPdfName);
-        rename($pdfFile, $finalPdfPath);
-
-        // Cleanup
-        @unlink($inputFile);
-
-        return [
-            'url' => $this->pdfUrlPrefix.'/'.$finalPdfName,
-            'path' => $finalPdfPath,
-        ];
     }
 
     /**
@@ -293,15 +265,6 @@ final class TypstService
 
         // Global Variables
         $globalVars = $this->listGlobalVariables();
-        foreach ($globalVars as $var) {
-            $resolvedValue = $this->resolveAssetPath($var['value'], $buildDir, true);
-            // Sanitize key to be a valid identifier if possible, or use a dictionary
-            // Typst identifiers: letters, numbers, underscores, hyphens (but hyphens are minus)
-            // Best to put them in a dictionary: #let globals = (...)
-            // But for backward compatibility with "simple" replacement, maybe top level vars?
-            // Let's use a dictionary `globals`.
-        }
-
         // Construct a `data` dictionary
         $data = ['globals' => []];
         foreach ($globalVars as $var) {
@@ -396,17 +359,13 @@ final class TypstService
     /**
      * Stage assets referenced directly in Typst code (e.g., #image("path")) into the build directory.
      */
-    private function stageInlineAssets(string $typstCode, string $buildDir): void
+    private function stageInlineAssets(string $typstCode, string $buildDir): string
     {
-        if (trim($typstCode) === '') {
-            return;
-        }
-        $matches = [];
-        preg_match_all('/#image\\s*\\(\\s*"([^"]+)"/', $typstCode, $matches);
-        $paths = array_unique($matches[1]);
-        foreach ($paths as $path) {
-            $this->resolveAssetPath($path, $buildDir, true);
-        }
+        return (string) preg_replace_callback('/(#image\\s*\\(\\s*")([^"]+)(")/', function (array $matches) use ($buildDir): string {
+            $path = $this->resolveAssetPath($matches[2], $buildDir, true);
+
+            return $matches[1].$path.$matches[3];
+        }, $typstCode);
     }
 
     /**
@@ -559,76 +518,35 @@ final class TypstService
             return $value;
         }
 
-        $normalized = str_replace('\\', '/', $value);
-        // Skip URLs
-        if (filter_var($normalized, FILTER_VALIDATE_URL)) {
-            return $normalized;
-        }
-
-        $projectRoot = realpath($this->projectRoot) ?: $this->projectRoot;
-        $publicRoot = realpath($this->publicRoot) ?: $this->publicRoot;
-        $candidates = [];
-        $storageAsset = $this->storageAssetLocation($normalized);
-        if ($storageAsset !== null) {
-            $candidates[] = $storageAsset['path'];
-        }
-
-        // Absolute path as-is
-        if (str_starts_with($normalized, '/')) {
-            $candidates[] = $normalized;
-        } elseif (preg_match('/^[A-Za-z]:\\//', $normalized) === 1) { // Windows absolute
-            $candidates[] = $normalized;
-        }
-
-        // Relative to project root, public, and storage/media
-        $candidates[] = $projectRoot.'/'.ltrim($normalized, '/');
-        $candidates[] = $publicRoot.'/'.ltrim($normalized, '/');
-        $candidates[] = $this->mediaStorageDir.'/'.ltrim($normalized, '/');
-        $candidates[] = $publicRoot.'/storage/'.ltrim($normalized, '/');
-        $candidates[] = $projectRoot.'/storage/'.ltrim($normalized, '/');
-
-        $sourcePath = null;
-        foreach ($candidates as $candidate) {
-            if (is_file($candidate)) {
-                $sourcePath = $candidate;
-                break;
-            }
-        }
-
-        if ($sourcePath === null) {
-            // Create a placeholder image if requested to avoid compilation failures.
-            if ($createPlaceholder) {
-                $relativePath = ltrim($normalized, '/');
-                $destPath = $buildDir.'/'.$relativePath;
-                $destDir = dirname($destPath);
-                if (! is_dir($destDir)) {
-                    @mkdir($destDir, 0777, true);
-                }
-                if (! is_file($destPath)) {
-                    $base64Png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-                    // The legacy placeholder is best effort, including text values that cannot be filenames.
-                    @file_put_contents($destPath, base64_decode($base64Png));
-                }
-
-                return $relativePath;
-            }
-
+        $location = $this->storageAssetLocation($value);
+        if ($location === null) {
             return $value;
         }
-
-        $relativePath = ltrim(str_replace('\\', '/', $normalized), '/');
-        $destPath = $buildDir.'/'.$relativePath;
-
-        if (! isset($this->copiedAssets[$sourcePath])) {
-            $destDir = dirname($destPath);
-            if (! is_dir($destDir)) {
-                mkdir($destDir, 0777, true);
-            }
-            @copy($sourcePath, $destPath);
-            $this->copiedAssets[$sourcePath] = $destPath;
+        $sourcePath = $location['path'];
+        $relativePath = $location['relative'];
+        if (isset($this->copiedAssets[$sourcePath])) {
+            return $this->copiedAssets[$sourcePath];
         }
+        if (count($this->copiedAssets) >= 64 || filesize($sourcePath) > 16777216) {
+            throw new RuntimeException('Document assets exceed the compilation limit.');
+        }
+        $totalBytes = filesize($sourcePath);
+        foreach (array_keys($this->copiedAssets) as $copiedSource) {
+            $totalBytes += filesize($copiedSource);
+        }
+        if ($totalBytes > 33554432) {
+            throw new RuntimeException('Document assets exceed the compilation limit.');
+        }
+        $destination = $buildDir.'/'.$relativePath;
+        $destinationDirectory = dirname($destination);
+        if (! is_dir($destinationDirectory) && ! mkdir($destinationDirectory, 0700, true) && ! is_dir($destinationDirectory)) {
+            throw new RuntimeException('Unable to stage document asset.');
+        }
+        if (! copy($sourcePath, $destination)) {
+            throw new RuntimeException('Unable to stage document asset.');
+        }
+        $this->copiedAssets[$sourcePath] = $relativePath;
 
-        // Return a path Typst can read relative to the build directory.
         return $relativePath;
     }
 
@@ -851,118 +769,67 @@ final class TypstService
      */
     private function buildAssetPreview(string $value): array
     {
-        if ($value === '') {
-            return ['url' => null, 'dataUri' => null];
-        }
-
-        // If already a URL, return as-is.
-        if (filter_var($value, FILTER_VALIDATE_URL)) {
+        if (preg_match('~^https?://~i', $value) === 1) {
             return ['url' => $value, 'dataUri' => null];
         }
+        $location = $this->storageAssetLocation($value);
 
-        $normalized = str_replace('\\', '/', $value);
-        $storageAsset = $this->storageAssetLocation($normalized);
-        if ($storageAsset !== null) {
-            return ['url' => $storageAsset['url'], 'dataUri' => null];
-        }
-        $projectRoot = realpath($this->projectRoot) ?: $this->projectRoot;
-        $publicRoot = realpath($this->publicRoot) ?: $this->publicRoot;
-
-        $candidates = [];
-
-        // Absolute path as-is
-        if (str_starts_with($normalized, '/')) {
-            $candidates[] = $normalized;
-        } elseif (preg_match('/^[A-Za-z]:\\//', $normalized) === 1) { // Windows absolute
-            $candidates[] = $normalized;
-        }
-
-        // Relative paths to try
-        $candidates[] = $projectRoot.'/'.ltrim($normalized, '/');
-        $candidates[] = $publicRoot.'/'.ltrim($normalized, '/');
-        $candidates[] = $publicRoot.'/storage/'.ltrim($normalized, '/');
-        $candidates[] = $projectRoot.'/storage/'.ltrim($normalized, '/');
-        $candidates[] = $this->mediaStorageDir.'/'.ltrim($normalized, '/');
-
-        foreach ($candidates as $candidate) {
-            $real = realpath($candidate);
-            if ($real === false || ! is_file($real)) {
-                continue;
-            }
-            $real = str_replace('\\', '/', $real);
-            $publicRootNorm = str_replace('\\', '/', $publicRoot);
-            if (str_starts_with($real, $publicRootNorm)) {
-                $relative = ltrim(substr($real, strlen($publicRootNorm)), '/');
-                $webPath = ltrim($relative, '/');
-
-                return ['url' => $webPath === '' ? null : $webPath, 'dataUri' => null];
-            }
-
-            // Not under public, fall back to data URI (limit size to avoid huge payloads).
-            $dataUri = $this->fileToDataUri($real, 1024 * 1024); // 1MB cap
-            if ($dataUri !== null) {
-                return ['url' => null, 'dataUri' => $dataUri];
-            }
-        }
-
-        // Last resort: treat value as relative URL
-        $fallback = ltrim($normalized, '/');
-
-        return ['url' => $fallback === '' ? null : $fallback, 'dataUri' => null];
-    }
-
-    /** Resolve stored relative paths through the host's configured storage roots. */
-    private function storageAssetLocation(string $value): ?array
-    {
-        $baseUrl = rtrim((string) (Config::get('app')['base_url'] ?? ''), '/');
-        foreach ([
-            ['typst-assets', $this->assetStorageDir, ['typst-assets/', 'storage/typst-assets/']],
-            ['media', $this->mediaStorageDir, ['media/', 'storage/media/', '../storage/media/']],
-        ] as [$kind, $directory, $legacyPrefixes]) {
-            $urlPrefix = ($baseUrl === '' ? '' : $baseUrl.'/').'storage/'.$kind.'/';
-            $prefixes = [$urlPrefix, ...$legacyPrefixes];
-            $suffix = null;
-            foreach ($prefixes as $prefix) {
-                if (str_starts_with($value, $prefix)) {
-                    $suffix = substr($value, strlen($prefix));
-                    break;
-                }
-            }
-            $root = realpath($directory);
-            $file = realpath($suffix === null ? $value : $directory.'/'.$suffix);
-            if ($root === false || $file === false || ! is_file($file)) {
-                continue;
-            }
-            $root = str_replace('\\', '/', $root);
-            $file = str_replace('\\', '/', $file);
-            if (! str_starts_with($file, $root.'/')) {
-                continue;
-            }
-
-            return ['path' => $file, 'url' => $urlPrefix.substr($file, strlen($root) + 1)];
-        }
-
-        return null;
+        return ['url' => $location['url'] ?? null, 'dataUri' => null];
     }
 
     /**
-     * Convert a file into a data URI if size within limit.
+     * Resolve image references only inside approved asset roots. Each path component
+     * must stay within its root, including symlinks; source and staging paths are distinct.
+     *
+     * @return array{path: string, url: string, relative: string}|null
      */
-    private function fileToDataUri(string $path, int $maxBytes): ?string
+    private function storageAssetLocation(string $value): ?array
     {
-        if (! is_file($path) || filesize($path) === false || filesize($path) > $maxBytes) {
+        if ($value === '' || strlen($value) > 1024 || str_contains($value, "\0") || str_contains($value, '\\')) {
             return null;
         }
-        $mime = function_exists('mime_content_type') ? @mime_content_type($path) : 'application/octet-stream';
-        if ($mime === false || $mime === '') {
-            $mime = 'application/octet-stream';
-        }
-        $contents = @file_get_contents($path);
-        if ($contents === false) {
-            return null;
+        $baseUrl = rtrim((string) (Config::get('app')['base_url'] ?? ''), '/');
+        foreach ([
+            ['typst-assets', $this->assetStorageDir, ['typst-assets/', 'storage/typst-assets/']],
+            ['media', $this->mediaStorageDir, ['media/', 'storage/media/']],
+            ['assets', $this->publicRoot.'/assets', ['assets/']],
+        ] as [$kind, $directory, $prefixes]) {
+            $urlPrefix = ($baseUrl === '' ? '' : $baseUrl.'/').($kind === 'assets' ? 'assets/' : 'storage/'.$kind.'/');
+            $relative = $value;
+            foreach ([$urlPrefix, ...$prefixes] as $prefix) {
+                if (str_starts_with($value, $prefix)) {
+                    $relative = substr($value, strlen($prefix));
+                    break;
+                }
+            }
+            if (str_starts_with($relative, '/') || str_contains($relative, ':')
+                || preg_match('~(?:^|/)(?:\.\.?|)(?:/|$)~', $relative) === 1
+                || preg_match('~\.(?:png|jpe?g|gif|webp|svg|pdf)$~i', $relative) !== 1) {
+                continue;
+            }
+            $root = realpath($directory);
+            $path = realpath($directory.'/'.$relative);
+            if ($root === false || $path === false || ! is_file($path) || ! str_starts_with($path, $root.DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+            $componentPath = $root;
+            $hasSymlink = false;
+            foreach (explode('/', $relative) as $component) {
+                $componentPath .= '/'.$component;
+                if (is_link($componentPath)) {
+                    $hasSymlink = true;
+                    break;
+                }
+            }
+            if ($hasSymlink) {
+                continue;
+            }
+            $stagedRelative = str_starts_with($value, '/') || str_contains($value, ':') ? $kind.'/'.$relative : $value;
+
+            return ['path' => $path, 'url' => $urlPrefix.$relative, 'relative' => $stagedRelative];
         }
 
-        return 'data:'.$mime.';base64,'.base64_encode($contents);
+        return null;
     }
 
     /**

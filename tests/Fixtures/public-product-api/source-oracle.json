@@ -1,0 +1,2129 @@
+{
+    "sourceCommit": "c10faf4b5314668f7695a9c138a8e9333bee469d",
+    "sourceSha256": {
+        "app/Controllers/PublicProductApiController.php": "d0f295001d02c225a14e05cc124889c23c4d6191cf8bfe9788346ff6b294498f",
+        "app/Services/PublicProductApiService.php": "415b2fef717c31a0c35789a3785ad11c3bf8dd319ba9562be78ebe5764792931"
+    },
+    "normalization": "Only top-level correlationId is removed; payload types, keys, lists and status codes are preserved.",
+    "cases": {
+        "discovery": {
+            "method": "GET",
+            "uri": "/api/",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "name": "Public Product API",
+                    "sourceOfTruth": "existing Product Catalog Manager MySQL database",
+                    "readOnly": true,
+                    "requiresMigration": false,
+                    "requiresImport": false,
+                    "requiresManualSync": false,
+                    "endpointCount": 10,
+                    "endpoints": [
+                        "/api/",
+                        "/api/health",
+                        "/api/tree",
+                        "/api/resolve/{path}",
+                        "/api/categories/{path}",
+                        "/api/series/{path}",
+                        "/api/series/{path}/fields",
+                        "/api/series/{path}/parts",
+                        "/api/series/{path}/facets",
+                        "/api/search?q={keyword}"
+                    ],
+                    "tree": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1,
+                            "children": [
+                                {
+                                    "id": 120,
+                                    "parentId": 100,
+                                    "name": "Accessories",
+                                    "type": "category",
+                                    "slug": "accessories",
+                                    "path": "electronics/accessories",
+                                    "displayOrder": 1,
+                                    "children": []
+                                },
+                                {
+                                    "id": 110,
+                                    "parentId": 100,
+                                    "name": "Power Switches",
+                                    "type": "series",
+                                    "slug": "power-switches",
+                                    "path": "electronics/power-switches",
+                                    "displayOrder": 2,
+                                    "children": [],
+                                    "partCount": 4
+                                },
+                                {
+                                    "id": 130,
+                                    "parentId": 100,
+                                    "name": "測定 Étage",
+                                    "type": "category",
+                                    "slug": "測定-Étage",
+                                    "path": "electronics/測定-Étage",
+                                    "displayOrder": 3,
+                                    "children": []
+                                },
+                                {
+                                    "id": 140,
+                                    "parentId": 100,
+                                    "name": "Blank Series",
+                                    "type": "series",
+                                    "slug": "blank-series",
+                                    "path": "electronics/blank-series",
+                                    "displayOrder": 4,
+                                    "children": [],
+                                    "partCount": 0
+                                },
+                                {
+                                    "id": 150,
+                                    "parentId": 100,
+                                    "name": "Switch!",
+                                    "type": "series",
+                                    "slug": "switch-150",
+                                    "path": "electronics/switch-150",
+                                    "displayOrder": 5,
+                                    "children": [],
+                                    "partCount": 0
+                                },
+                                {
+                                    "id": 151,
+                                    "parentId": 100,
+                                    "name": "Switch?",
+                                    "type": "series",
+                                    "slug": "switch-151",
+                                    "path": "electronics/switch-151",
+                                    "displayOrder": 5,
+                                    "children": [],
+                                    "partCount": 0
+                                }
+                            ]
+                        },
+                        {
+                            "id": 200,
+                            "parentId": null,
+                            "name": "Empty Category",
+                            "type": "category",
+                            "slug": "empty-category",
+                            "path": "empty-category",
+                            "displayOrder": 2,
+                            "children": []
+                        }
+                    ]
+                }
+            }
+        },
+        "health": {
+            "method": "GET",
+            "uri": "/api/health",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "status": "ok",
+                    "database": "connected",
+                    "writeOperations": false
+                }
+            }
+        },
+        "tree": {
+            "method": "GET",
+            "uri": "/api/tree",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": [
+                    {
+                        "id": 100,
+                        "parentId": null,
+                        "name": "Electronics",
+                        "type": "category",
+                        "slug": "electronics",
+                        "path": "electronics",
+                        "displayOrder": 1,
+                        "children": [
+                            {
+                                "id": 120,
+                                "parentId": 100,
+                                "name": "Accessories",
+                                "type": "category",
+                                "slug": "accessories",
+                                "path": "electronics/accessories",
+                                "displayOrder": 1,
+                                "children": []
+                            },
+                            {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2,
+                                "children": [],
+                                "partCount": 4
+                            },
+                            {
+                                "id": 130,
+                                "parentId": 100,
+                                "name": "測定 Étage",
+                                "type": "category",
+                                "slug": "測定-Étage",
+                                "path": "electronics/測定-Étage",
+                                "displayOrder": 3,
+                                "children": []
+                            },
+                            {
+                                "id": 140,
+                                "parentId": 100,
+                                "name": "Blank Series",
+                                "type": "series",
+                                "slug": "blank-series",
+                                "path": "electronics/blank-series",
+                                "displayOrder": 4,
+                                "children": [],
+                                "partCount": 0
+                            },
+                            {
+                                "id": 150,
+                                "parentId": 100,
+                                "name": "Switch!",
+                                "type": "series",
+                                "slug": "switch-150",
+                                "path": "electronics/switch-150",
+                                "displayOrder": 5,
+                                "children": [],
+                                "partCount": 0
+                            },
+                            {
+                                "id": 151,
+                                "parentId": 100,
+                                "name": "Switch?",
+                                "type": "series",
+                                "slug": "switch-151",
+                                "path": "electronics/switch-151",
+                                "displayOrder": 5,
+                                "children": [],
+                                "partCount": 0
+                            }
+                        ]
+                    },
+                    {
+                        "id": 200,
+                        "parentId": null,
+                        "name": "Empty Category",
+                        "type": "category",
+                        "slug": "empty-category",
+                        "path": "empty-category",
+                        "displayOrder": 2,
+                        "children": []
+                    }
+                ]
+            }
+        },
+        "resolve": {
+            "method": "GET",
+            "uri": "/api/resolve/electronics/power-switches",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2
+                        }
+                    ]
+                }
+            }
+        },
+        "category": {
+            "method": "GET",
+            "uri": "/api/categories/electronics",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 100,
+                        "parentId": null,
+                        "name": "Electronics",
+                        "type": "category",
+                        "slug": "electronics",
+                        "path": "electronics",
+                        "displayOrder": 1
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        }
+                    ],
+                    "children": [
+                        {
+                            "id": 120,
+                            "parentId": 100,
+                            "name": "Accessories",
+                            "type": "category",
+                            "slug": "accessories",
+                            "path": "electronics/accessories",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2,
+                            "partCount": 4
+                        },
+                        {
+                            "id": 130,
+                            "parentId": 100,
+                            "name": "測定 Étage",
+                            "type": "category",
+                            "slug": "測定-Étage",
+                            "path": "electronics/測定-Étage",
+                            "displayOrder": 3
+                        },
+                        {
+                            "id": 140,
+                            "parentId": 100,
+                            "name": "Blank Series",
+                            "type": "series",
+                            "slug": "blank-series",
+                            "path": "electronics/blank-series",
+                            "displayOrder": 4,
+                            "partCount": 0
+                        },
+                        {
+                            "id": 150,
+                            "parentId": 100,
+                            "name": "Switch!",
+                            "type": "series",
+                            "slug": "switch-150",
+                            "path": "electronics/switch-150",
+                            "displayOrder": 5,
+                            "partCount": 0
+                        },
+                        {
+                            "id": 151,
+                            "parentId": 100,
+                            "name": "Switch?",
+                            "type": "series",
+                            "slug": "switch-151",
+                            "path": "electronics/switch-151",
+                            "displayOrder": 5,
+                            "partCount": 0
+                        }
+                    ]
+                }
+            }
+        },
+        "series": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2
+                        }
+                    ],
+                    "metadata": [
+                        {
+                            "key": "heading",
+                            "label": "Heading",
+                            "type": "text",
+                            "value": "Default heading",
+                            "sortOrder": 1
+                        },
+                        {
+                            "key": "spec",
+                            "label": "Specification",
+                            "type": "file",
+                            "value": "media/spec sheet.pdf",
+                            "sortOrder": 2
+                        },
+                        {
+                            "key": "missing",
+                            "label": "Missing",
+                            "type": "text",
+                            "value": null,
+                            "sortOrder": 3
+                        },
+                        {
+                            "key": "empty",
+                            "label": "Empty",
+                            "type": "text",
+                            "value": "",
+                            "sortOrder": 4
+                        }
+                    ],
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "partCount": 4
+                }
+            }
+        },
+        "fields": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/fields",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": [
+                    {
+                        "id": 1001,
+                        "key": "voltage",
+                        "label": "Voltage",
+                        "type": "number",
+                        "defaultValue": "5",
+                        "sortOrder": 1,
+                        "required": true
+                    },
+                    {
+                        "id": 1002,
+                        "key": "finish",
+                        "label": "Finish",
+                        "type": "text",
+                        "defaultValue": "Silver",
+                        "sortOrder": 1,
+                        "required": false
+                    },
+                    {
+                        "id": 1003,
+                        "key": "optional",
+                        "label": "Optional",
+                        "type": "text",
+                        "defaultValue": null,
+                        "sortOrder": 2,
+                        "required": false
+                    }
+                ]
+            }
+        },
+        "parts": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "values": {
+                                "voltage": "2",
+                                "finish": "gold",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        },
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": "0"
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 4,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "facets": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/facets",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "totalParts": 4,
+                    "facets": [
+                        {
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "values": [
+                                {
+                                    "value": 2,
+                                    "count": 1
+                                },
+                                {
+                                    "value": 5,
+                                    "count": 1
+                                },
+                                {
+                                    "value": 10,
+                                    "count": 2
+                                }
+                            ]
+                        },
+                        {
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "values": [
+                                {
+                                    "value": "Gold",
+                                    "count": 2
+                                },
+                                {
+                                    "value": "gold",
+                                    "count": 1
+                                },
+                                {
+                                    "value": "Silver",
+                                    "count": 1
+                                }
+                            ]
+                        },
+                        {
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "values": [
+                                {
+                                    "value": 0,
+                                    "count": 1
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "search": {
+            "method": "GET",
+            "uri": "/api/search?q=alpha",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "alpha",
+                    "nodes": [],
+                    "parts": [
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "search-trimmed": {
+            "method": "GET",
+            "uri": "/api/search?q=%20alpha%20",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "alpha",
+                    "nodes": [],
+                    "parts": [
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "search-wildcard": {
+            "method": "GET",
+            "uri": "/api/search?q=%25",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "%",
+                    "nodes": [],
+                    "parts": [
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        },
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        },
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "search-description": {
+            "method": "GET",
+            "uri": "/api/search?q=%E6%B8%AC%E5%AE%9A",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "測定",
+                    "nodes": [
+                        {
+                            "id": 130,
+                            "parentId": 100,
+                            "name": "測定 Étage",
+                            "type": "category",
+                            "slug": "測定-Étage",
+                            "path": "electronics/測定-Étage",
+                            "displayOrder": 3
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "series": {
+                                "id": 110,
+                                "parentId": 100,
+                                "name": "Power Switches",
+                                "type": "series",
+                                "slug": "power-switches",
+                                "path": "electronics/power-switches",
+                                "displayOrder": 2
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "search-blank": {
+            "method": "GET",
+            "uri": "/api/search?q=%20",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "",
+                    "nodes": [],
+                    "parts": []
+                }
+            }
+        },
+        "search-missing": {
+            "method": "GET",
+            "uri": "/api/search",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "query": "",
+                    "nodes": [],
+                    "parts": []
+                }
+            }
+        },
+        "filter-or-and": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?filter%5Bfinish%5D%5B0%5D=GOLD&filter%5Bfinish%5D%5B1%5D=unknown&filter%5Bvoltage%5D%5B0%5D=2&filter%5Bvoltage%5D%5B1%5D=5",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "values": {
+                                "voltage": "2",
+                                "finish": "gold",
+                                "optional": null
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 1,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "filter-whitespace": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?filter[finish]=%20Gold%20",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 0,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "filter-empty": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?filter[optional]=",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "values": {
+                                "voltage": "2",
+                                "finish": "gold",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 3,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "sort-natural": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?sort=voltage",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "values": {
+                                "voltage": "2",
+                                "finish": "gold",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        },
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": "0"
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 4,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "sort-descending-tie": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?sort=name&direction=DESC",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": "0"
+                            }
+                        },
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2002,
+                            "sku": "SW-2",
+                            "name": "Alpha",
+                            "description": "Second part",
+                            "values": {
+                                "voltage": "2",
+                                "finish": "gold",
+                                "optional": null
+                            }
+                        },
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 4,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "parts-public-search": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?search=silver",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 1,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "parts-private-search": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?search=CLASSIFIED",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 0,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "pagination-last": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?page=999&per_page=2",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        },
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": "0"
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 2,
+                        "per_page": 2,
+                        "total": 4,
+                        "last_page": 2
+                    }
+                }
+            }
+        },
+        "pagination-negative": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?page=-1&per_page=-5",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2003,
+                            "sku": "SW-1",
+                            "name": "Beta",
+                            "description": "Third part",
+                            "values": {
+                                "voltage": "5",
+                                "finish": "Silver",
+                                "optional": null
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 1,
+                        "total": 4,
+                        "last_page": 4
+                    }
+                }
+            }
+        },
+        "pagination-fractional": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?page=2.9&per_page=2.9",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "fields": [
+                        {
+                            "id": 1001,
+                            "key": "voltage",
+                            "label": "Voltage",
+                            "type": "number",
+                            "defaultValue": "5",
+                            "sortOrder": 1,
+                            "required": true
+                        },
+                        {
+                            "id": 1002,
+                            "key": "finish",
+                            "label": "Finish",
+                            "type": "text",
+                            "defaultValue": "Silver",
+                            "sortOrder": 1,
+                            "required": false
+                        },
+                        {
+                            "id": 1003,
+                            "key": "optional",
+                            "label": "Optional",
+                            "type": "text",
+                            "defaultValue": null,
+                            "sortOrder": 2,
+                            "required": false
+                        }
+                    ],
+                    "parts": [
+                        {
+                            "id": 2001,
+                            "sku": "SW-10",
+                            "name": "Alpha",
+                            "description": null,
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": ""
+                            }
+                        },
+                        {
+                            "id": 2004,
+                            "sku": "SW-20",
+                            "name": "Gamma",
+                            "description": "測定 description",
+                            "values": {
+                                "voltage": "10",
+                                "finish": "Gold",
+                                "optional": "0"
+                            }
+                        }
+                    ],
+                    "pagination": {
+                        "page": 2,
+                        "per_page": 2,
+                        "total": 4,
+                        "last_page": 2
+                    }
+                }
+            }
+        },
+        "empty-series": {
+            "method": "GET",
+            "uri": "/api/series/electronics/blank-series",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 140,
+                        "parentId": 100,
+                        "name": "Blank Series",
+                        "type": "series",
+                        "slug": "blank-series",
+                        "path": "electronics/blank-series",
+                        "displayOrder": 4
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 140,
+                            "parentId": 100,
+                            "name": "Blank Series",
+                            "type": "series",
+                            "slug": "blank-series",
+                            "path": "electronics/blank-series",
+                            "displayOrder": 4
+                        }
+                    ],
+                    "metadata": [],
+                    "fields": [],
+                    "partCount": 0
+                }
+            }
+        },
+        "empty-parts": {
+            "method": "GET",
+            "uri": "/api/series/electronics/blank-series/parts?page=20",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 140,
+                        "parentId": 100,
+                        "name": "Blank Series",
+                        "type": "series",
+                        "slug": "blank-series",
+                        "path": "electronics/blank-series",
+                        "displayOrder": 4
+                    },
+                    "fields": [],
+                    "parts": [],
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 25,
+                        "total": 0,
+                        "last_page": 1
+                    }
+                }
+            }
+        },
+        "empty-facets": {
+            "method": "GET",
+            "uri": "/api/series/electronics/blank-series/facets",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "series": {
+                        "id": 140,
+                        "parentId": 100,
+                        "name": "Blank Series",
+                        "type": "series",
+                        "slug": "blank-series",
+                        "path": "electronics/blank-series",
+                        "displayOrder": 4
+                    },
+                    "totalParts": 0,
+                    "facets": []
+                }
+            }
+        },
+        "duplicate-slug": {
+            "method": "GET",
+            "uri": "/api/resolve/electronics/switch-150",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 150,
+                        "parentId": 100,
+                        "name": "Switch!",
+                        "type": "series",
+                        "slug": "switch-150",
+                        "path": "electronics/switch-150",
+                        "displayOrder": 5
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 150,
+                            "parentId": 100,
+                            "name": "Switch!",
+                            "type": "series",
+                            "slug": "switch-150",
+                            "path": "electronics/switch-150",
+                            "displayOrder": 5
+                        }
+                    ]
+                }
+            }
+        },
+        "unicode-slug": {
+            "method": "GET",
+            "uri": "/api/resolve/electronics/%E6%B8%AC%E5%AE%9A-%C3%89tage",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 130,
+                        "parentId": 100,
+                        "name": "測定 Étage",
+                        "type": "category",
+                        "slug": "測定-Étage",
+                        "path": "electronics/測定-Étage",
+                        "displayOrder": 3
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 130,
+                            "parentId": 100,
+                            "name": "測定 Étage",
+                            "type": "category",
+                            "slug": "測定-Étage",
+                            "path": "electronics/測定-Étage",
+                            "displayOrder": 3
+                        }
+                    ]
+                }
+            }
+        },
+        "index-path": {
+            "method": "GET",
+            "uri": "/api/index.php/resolve/electronics/power-switches",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2
+                        }
+                    ]
+                }
+            }
+        },
+        "index-query": {
+            "method": "GET",
+            "uri": "/api/index.php?route=resolve/electronics/power-switches",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2
+                        }
+                    ]
+                }
+            }
+        },
+        "query-precedence": {
+            "method": "GET",
+            "uri": "/api/health?route=resolve/electronics/power-switches",
+            "status": 200,
+            "body": {
+                "success": true,
+                "data": {
+                    "resource": {
+                        "id": 110,
+                        "parentId": 100,
+                        "name": "Power Switches",
+                        "type": "series",
+                        "slug": "power-switches",
+                        "path": "electronics/power-switches",
+                        "displayOrder": 2
+                    },
+                    "breadcrumb": [
+                        {
+                            "id": 100,
+                            "parentId": null,
+                            "name": "Electronics",
+                            "type": "category",
+                            "slug": "electronics",
+                            "path": "electronics",
+                            "displayOrder": 1
+                        },
+                        {
+                            "id": 110,
+                            "parentId": 100,
+                            "name": "Power Switches",
+                            "type": "series",
+                            "slug": "power-switches",
+                            "path": "electronics/power-switches",
+                            "displayOrder": 2
+                        }
+                    ]
+                }
+            }
+        },
+        "missing-path": {
+            "method": "GET",
+            "uri": "/api/resolve/electronics/missing",
+            "status": 404,
+            "body": {
+                "success": false,
+                "errorCode": "NOT_FOUND",
+                "message": "Public catalog path not found.",
+                "details": {
+                    "path": "electronics/missing"
+                }
+            }
+        },
+        "missing-series": {
+            "method": "GET",
+            "uri": "/api/series/electronics/missing",
+            "status": 404,
+            "body": {
+                "success": false,
+                "errorCode": "SERIES_NOT_FOUND",
+                "message": "Public series not found.",
+                "details": []
+            }
+        },
+        "wrong-category": {
+            "method": "GET",
+            "uri": "/api/categories/electronics/power-switches",
+            "status": 404,
+            "body": {
+                "success": false,
+                "errorCode": "CATEGORY_NOT_FOUND",
+                "message": "Public category not found.",
+                "details": []
+            }
+        },
+        "wrong-series": {
+            "method": "GET",
+            "uri": "/api/series/electronics",
+            "status": 404,
+            "body": {
+                "success": false,
+                "errorCode": "SERIES_NOT_FOUND",
+                "message": "Public series not found.",
+                "details": []
+            }
+        },
+        "unknown-route": {
+            "method": "GET",
+            "uri": "/api/unknown",
+            "status": 404,
+            "body": {
+                "success": false,
+                "errorCode": "NOT_FOUND",
+                "message": "API route not found.",
+                "details": []
+            }
+        },
+        "hidden-filter": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?filter[secret]=CLASSIFIED",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_QUERY",
+                "message": "Unknown filter field.",
+                "details": {
+                    "field": "secret"
+                }
+            }
+        },
+        "hidden-sort": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?sort=secret",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_QUERY",
+                "message": "Unknown sort field.",
+                "details": []
+            }
+        },
+        "invalid-sort": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?sort=unknown",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_QUERY",
+                "message": "Unknown sort field.",
+                "details": []
+            }
+        },
+        "invalid-direction": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?direction=sideways",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_QUERY",
+                "message": "direction must be asc or desc.",
+                "details": []
+            }
+        },
+        "invalid-filter": {
+            "method": "GET",
+            "uri": "/api/series/electronics/power-switches/parts?filter=bad",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_QUERY",
+                "message": "filter must be an array.",
+                "details": []
+            }
+        },
+        "invalid-percent": {
+            "method": "GET",
+            "uri": "/api/resolve/bad%GG",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_PATH",
+                "message": "Invalid path encoding.",
+                "details": []
+            }
+        },
+        "invalid-traversal": {
+            "method": "GET",
+            "uri": "/api/resolve/electronics/%2e%2e/secret",
+            "status": 422,
+            "body": {
+                "success": false,
+                "errorCode": "INVALID_PATH",
+                "message": "A valid catalog path is required.",
+                "details": []
+            }
+        },
+        "post": {
+            "method": "POST",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 405,
+            "body": {
+                "success": false,
+                "errorCode": "METHOD_NOT_ALLOWED",
+                "message": "Only GET is supported.",
+                "details": []
+            }
+        },
+        "put": {
+            "method": "PUT",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 405,
+            "body": {
+                "success": false,
+                "errorCode": "METHOD_NOT_ALLOWED",
+                "message": "Only GET is supported.",
+                "details": []
+            }
+        },
+        "patch": {
+            "method": "PATCH",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 405,
+            "body": {
+                "success": false,
+                "errorCode": "METHOD_NOT_ALLOWED",
+                "message": "Only GET is supported.",
+                "details": []
+            }
+        },
+        "delete": {
+            "method": "DELETE",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 405,
+            "body": {
+                "success": false,
+                "errorCode": "METHOD_NOT_ALLOWED",
+                "message": "Only GET is supported.",
+                "details": []
+            }
+        },
+        "options": {
+            "method": "OPTIONS",
+            "uri": "/api/series/electronics/power-switches/parts",
+            "status": 405,
+            "body": {
+                "success": false,
+                "errorCode": "METHOD_NOT_ALLOWED",
+                "message": "Only GET is supported.",
+                "details": []
+            }
+        }
+    }
+}

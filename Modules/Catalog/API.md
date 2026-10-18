@@ -2,6 +2,14 @@
 
 The native Laravel module uses /catalog by default. Prefix the paths below with /catalog, for example /catalog/catalog.php?action=v1.ping. legacy_urls=true also exposes the original root URLs; project_root_urls=true exposes /public/* for old repository-root deployments. Host APP_URL or catalog.base_url supplies any deployment subdirectory. Fields remain case-sensitive.
 
+## Public Product API and authorization
+
+The ten anonymous GET endpoints are `/api/`, `/api/health`, `/api/tree`, `/api/resolve/{path}`, `/api/categories/{path}`, `/api/series/{path}`, `/api/series/{path}/fields`, `/api/series/{path}/parts`, `/api/series/{path}/facets`, and `/api/search?q={keyword}`. Their flat success/error envelopes follow source commit `c10faf4b5314668f7695a9c138a8e9333bee469d`. See [the implementation reference](../../docs/public-product-api-implementation.md) for queries, limits, security deviations and lifecycle behavior.
+
+All legacy APIs below, their aliases, Catalog pages and private storage require an active Laravel session or Passport user bearer token and `catalog.view`. Mutations also require the appropriate `catalog.create`, `catalog.update` or `catalog.delete` permissions; import/restore require all three. OAuth scopes do not grant application permissions. Session writes require CSRF. Existing bundled pages send the token automatically. Anonymous writes are intentionally incompatible with the insecure previous behavior. Asset bundles alone remain anonymously readable while enabled.
+
+File `csv-export`, `csv-import`, `csv-restore`, `truncate` and `pdf` endpoints now require POST to prevent session-authenticated GET side effects. The source's existing legacy action methods remain unchanged. Errors remove SQL, paths and stack traces; the documented static `Missing ID` compatibility error remains. Compilers require Linux bubblewrap/prlimit and working namespaces; absolute/private template reads, networking and shell escape are disabled.
+
 ## JSON, methods and input
 
 File APIs retain success {"success":true,"data":...,"correlationId":"..."} and errors {"error":{"code":"...","message":"...","correlationId":"..."}}. Legacy errors retain {"success":false,"errorCode":"...","message":"...","details":...,"correlationId":"..."}. Legacy successful actions without a result omit data. Error casing, validation messages, numeric/null values and status codes stay distinct.
@@ -10,7 +18,7 @@ JSON replies carry Content-Type: application/json; charset=utf-8 and X-Correlati
 
 The module skips Laravel trimming/empty-to-null conversion only at exact Catalog API addresses. It reads raw JSON, query/form values, native uploaded files and the real HTTP method. JSON/form method spoofing does not change legacy method validation.
 
-Hierarchy, search, CSV, PDF and file Spec Search retain their original lack of explicit method restrictions. Series details accepts GET. Typst templates accept GET/POST/PUT/DELETE; variables GET/POST/DELETE; compile POST; preferences GET/PUT. LaTeX templates accept GET/POST/PUT/DELETE; variables GET/POST/DELETE (PUT is 405); compile POST. Other methods retain each controller's own 405 behaviour.
+Read-only hierarchy/search/Spec Search file adapters retain their legacy input behavior. CSV mutation/export and PDF compilation file endpoints require POST. Series details accepts GET. Typst templates accept GET/POST/PUT/DELETE; variables GET/POST/DELETE; compile POST; preferences GET/PUT. LaTeX templates accept GET/POST/PUT/DELETE; variables GET/POST/DELETE (PUT is 405); compile POST. Other methods retain each controller's own 405 behaviour.
 
 ## File endpoints
 
@@ -99,11 +107,11 @@ Declared module routes serve media, PDFs and Typst images from host-configured d
 
 | Address | Behaviour |
 |---|---|
-| /api/catalog/hierarchy.php, /api/catalog/search.php | Original public file controller. |
+| /api/catalog/hierarchy.php, /api/catalog/search.php | Original file controller; authenticated management access. |
 | /api/spec-search/{root-categories,product-categories,facets,products}/index.php | Original file API; suffixless aliases also work. |
 | /api/typst/templates.php, /api/typst/variables.php | root_typst_api=public selects public controller; root selects original root adapter. |
 | /legacy/api/typst/templates.php, /legacy/api/typst/variables.php | Explicit original root adapter. |
-| /api/typst/compile.php | Original public compiler. |
+| /api/typst/compile.php | Original file compiler; authenticated and authorized access. |
 | /public/* | Available with project_root_urls=true. |
 
 Root Typst variables are global-only, with different validation and no modern multipart/category/series behaviour. Root templates retain different validation/scoping/DELETE behaviour. Canonical /catalog/api/typst/* always uses the public controllers. The unused api/spec-search/db_connect.php was an internal connection include, not a JSON API; it has no public route.

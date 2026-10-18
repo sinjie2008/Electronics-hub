@@ -126,7 +126,7 @@ export class SpecSearchPage {
      */
     async fetchJson(url, options = {}) {
         const runner = async () => {
-            const response = await fetch(url, {
+            const response = await window.catalogFetch(url, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options,
             });

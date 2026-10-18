@@ -19,6 +19,7 @@ use Modules\Catalog\Services\ProductService;
 use Modules\Catalog\Services\PublicCatalogService;
 use Modules\Catalog\Services\SeriesAttributeService;
 use Modules\Catalog\Services\SeriesFieldService;
+use Modules\Catalog\Support\CompilerRunner;
 use Modules\Catalog\Support\Logger;
 use mysqli;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -307,6 +308,7 @@ final class CatalogController
                     $templateId,
                     (string) ($template['latex'] ?? '')
                 );
+                CompilerRunner::assertModuleEnabled();
                 $updated = $this->latexTemplateService->updatePdfPath(
                     $templateId,
                     (string) $buildResult['relativePath'],

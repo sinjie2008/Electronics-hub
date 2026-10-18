@@ -4,6 +4,7 @@
 <head>
     <base href="{{ $catalogBaseUrl }}/">
     <meta charset="utf-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Series Typst Template</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="assets/css/latex-templating.css?v={{ $catalogAssetVersions['css/latex-templating.css'] }}">
     <link rel="stylesheet" href="assets/css/series_typst_template.css?v={{ $catalogAssetVersions['css/series_typst_template.css'] }}">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="assets/js/catalog-auth.js?v={{ $catalogAssetVersions['js/catalog-auth.js'] }}"></script>
 </head>
 
 <body data-logging-enabled="true">

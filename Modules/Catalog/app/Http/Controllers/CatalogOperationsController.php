@@ -9,6 +9,7 @@ use Modules\Catalog\Http\CatalogApiException;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Http\RequestInput;
 use Modules\Catalog\Http\Response;
+use Modules\Catalog\Support\CompilerRunner;
 use Modules\Catalog\Support\Logger;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
@@ -128,6 +129,7 @@ final class CatalogOperationsController
             $app = $this->createCatalogApplication();
             $template = $app->getLatexTemplateService()->getTemplate($templateId);
             $build = $app->getLatexBuildService()->build($templateId, (string) ($template['latex'] ?? ''));
+            CompilerRunner::assertModuleEnabled();
             $updated = $app->getLatexTemplateService()->updatePdfPath(
                 $templateId,
                 (string) $build['relativePath'],

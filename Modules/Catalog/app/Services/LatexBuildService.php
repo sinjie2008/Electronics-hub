@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Catalog\Services;
 
 use Modules\Catalog\Http\CatalogApiException;
+use Modules\Catalog\Support\CompilerRunner;
 use Modules\Catalog\Support\Config;
 use RuntimeException;
 
@@ -39,95 +40,39 @@ final class LatexBuildService
      */
     public function build(int $templateId, string $latex): array
     {
+        CompilerRunner::assertModuleEnabled();
+        CompilerRunner::assertSourceSize($latex);
         $timestamp = (new \DateTimeImmutable('now'))->format('YmdHis');
         $token = bin2hex(random_bytes(4));
         $baseName = sprintf('template_%d_%s_%s', $templateId, $timestamp, $token);
-        $texPath = $this->workingDir.DIRECTORY_SEPARATOR.$baseName.'.tex';
-
-        if (file_put_contents($texPath, $latex) === false) {
-            throw new CatalogApiException(
-                'LATEX_BUILD_ERROR',
-                'Unable to write temporary LaTeX source file.',
-                500
-            );
-        }
-
-        $command = sprintf(
-            '%s -interaction=nonstopmode -halt-on-error -output-directory %s %s',
-            escapeshellarg($this->pdflatexPath),
-            escapeshellarg($this->workingDir),
-            escapeshellarg($texPath)
-        );
-
+        $jobDirectory = CompilerRunner::createJobDirectory($this->workingDir);
         $correlationId = bin2hex(random_bytes(16));
-        error_log(
-            sprintf(
-                '[LatexBuild] action=start templateId=%d correlationId=%s command=%s',
-                $templateId,
-                $correlationId,
-                $command
-            )
-        );
-
-        $descriptorSpec = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-
-        $process = proc_open($command, $descriptorSpec, $pipes, $this->workingDir);
-        if (! is_resource($process)) {
-            $this->cleanupWorkingFiles($baseName);
-            throw new CatalogApiException('LATEX_TOOL_MISSING', 'Unable to execute MiKTeX pdflatex.', 500);
-        }
-
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]) ?: '';
-        fclose($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]) ?: '';
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
-        $pdfSource = $this->workingDir.DIRECTORY_SEPARATOR.$baseName.'.pdf';
-
         try {
-            if ($exitCode !== 0 || ! is_file($pdfSource)) {
-                error_log(
-                    sprintf(
-                        '[LatexBuild] action=fail templateId=%d correlationId=%s exitCode=%d',
-                        $templateId,
-                        $correlationId,
-                        $exitCode
-                    )
-                );
-                throw new CatalogApiException(
-                    'LATEX_BUILD_ERROR',
-                    'MiKTeX compilation failed.',
-                    500,
-                    [
-                        'stdout' => trim($stdout),
-                        'stderr' => trim($stderr),
-                        'exitCode' => $exitCode,
-                        'correlationId' => $correlationId,
-                    ]
-                );
+            if (file_put_contents($jobDirectory.'/'.$baseName.'.tex', $latex) === false) {
+                throw new CatalogApiException('LATEX_BUILD_ERROR', 'Unable to write temporary LaTeX source file.', 500);
             }
-
+            $result = (new CompilerRunner)->run($this->pdflatexPath, [
+                '-no-shell-escape', '-interaction=nonstopmode', '-halt-on-error',
+                '-output-directory=.', $baseName.'.tex',
+            ], $jobDirectory);
+            $stdout = $result['stdout'];
+            $stderr = $result['stderr'];
+            $exitCode = $result['exitCode'];
+            $pdfSource = $jobDirectory.'/'.$baseName.'.pdf';
+            if ($exitCode !== 0 || ! is_file($pdfSource) || is_link($pdfSource)) {
+                throw new CatalogApiException('LATEX_BUILD_ERROR', 'MiKTeX compilation failed.', 500, [
+                    'stdout' => trim($stdout),
+                    'stderr' => trim($stderr),
+                    'exitCode' => $exitCode,
+                    'correlationId' => $correlationId,
+                ]);
+            }
             $pdfFilename = sprintf('%d-%s-%s.pdf', $templateId, $timestamp, $token);
             $targetPath = $this->storageDir.DIRECTORY_SEPARATOR.$pdfFilename;
             $this->movePdf($pdfSource, $targetPath);
-            $relativePath = $this->relativePrefix.'/'.$pdfFilename;
-
-            error_log(
-                sprintf(
-                    '[LatexBuild] action=success templateId=%d correlationId=%s file=%s',
-                    $templateId,
-                    $correlationId,
-                    $targetPath
-                )
-            );
 
             return [
-                'relativePath' => $relativePath,
+                'relativePath' => $this->relativePrefix.'/'.$pdfFilename,
                 'absolutePath' => $targetPath,
                 'stdout' => trim($stdout),
                 'stderr' => trim($stderr),
@@ -136,7 +81,7 @@ final class LatexBuildService
                 'correlationId' => $correlationId,
             ];
         } finally {
-            $this->cleanupWorkingFiles($baseName);
+            CompilerRunner::cleanup($jobDirectory);
         }
     }
 
@@ -145,17 +90,6 @@ final class LatexBuildService
         if (! is_dir($directory)) {
             if (! mkdir($directory, 0775, true) && ! is_dir($directory)) {
                 throw new RuntimeException('Unable to create directory: '.$directory);
-            }
-        }
-    }
-
-    private function cleanupWorkingFiles(string $baseName): void
-    {
-        $extensions = ['tex', 'aux', 'log', 'out', 'toc', 'pdf'];
-        foreach ($extensions as $extension) {
-            $path = $this->workingDir.DIRECTORY_SEPARATOR.$baseName.'.'.$extension;
-            if (is_file($path)) {
-                @unlink($path);
             }
         }
     }

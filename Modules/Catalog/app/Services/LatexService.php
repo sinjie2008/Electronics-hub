@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Catalog\Services;
 
 use Modules\Catalog\Repositories\LatexRepository;
+use Modules\Catalog\Support\CompilerRunner;
 use Modules\Catalog\Support\Config;
 use Modules\Catalog\Support\Db;
 use mysqli;
@@ -149,6 +150,8 @@ final class LatexService
      */
     public function compileLatex(string $latex, int $seriesId): array
     {
+        CompilerRunner::assertModuleEnabled();
+        CompilerRunner::assertSourceSize($latex);
         $seriesDetails = $this->catalog->getSeriesDetails($seriesId);
         if (! $seriesDetails) {
             throw new RuntimeException('Series not found');
@@ -171,46 +174,46 @@ final class LatexService
                 foreach ($this->latex->getProductAttributes((int) $product['id']) as $attribute) {
                     $row = str_replace($attribute['field_key'], $attribute['value'] ?? '', $row);
                 }
+                CompilerRunner::assertSourceSize($row);
                 $productsLatex .= $row;
+                CompilerRunner::assertSourceSize($productsLatex);
             }
 
             $latex = str_replace($matches[0], $productsLatex, $latex);
         }
 
-        $buildDir = $this->buildStorageDir;
-        if (! is_dir($buildDir)) {
-            mkdir($buildDir, 0777, true);
+        CompilerRunner::assertSourceSize($latex);
+        $buildDir = CompilerRunner::createJobDirectory($this->buildStorageDir);
+        try {
+            $jobId = uniqid('latex_');
+            $texFile = $buildDir.'/'.$jobId.'.tex';
+            if (file_put_contents($texFile, $latex) === false) {
+                throw new RuntimeException('Unable to write document source.');
+            }
+            $result = (new CompilerRunner)->run($this->pdflatexBinary, [
+                '-no-shell-escape', '-interaction=nonstopmode', '-halt-on-error',
+                '-output-directory=.', $jobId.'.tex',
+            ], $buildDir);
+            $pdfFile = $buildDir.'/'.$jobId.'.pdf';
+            if ($result['exitCode'] !== 0 || ! is_file($pdfFile) || is_link($pdfFile)) {
+                throw new RuntimeException('PDF compilation failed.');
+            }
+            if (! is_dir($this->pdfStorageDir) && ! mkdir($this->pdfStorageDir, 0775, true) && ! is_dir($this->pdfStorageDir)) {
+                throw new RuntimeException('Unable to create PDF storage.');
+            }
+            $finalPdfName = 'series_'.$seriesId.'_'.date('YmdHis').'_'.bin2hex(random_bytes(8)).'.pdf';
+            $finalPdfPath = $this->pdfStorageDir.'/'.$finalPdfName;
+            if (! rename($pdfFile, $finalPdfPath)) {
+                throw new RuntimeException('Unable to store compiled PDF.');
+            }
+
+            return [
+                'url' => $this->pdfUrlPrefix.'/'.$finalPdfName,
+                'path' => $finalPdfPath,
+            ];
+        } finally {
+            CompilerRunner::cleanup($buildDir);
         }
-
-        $jobId = uniqid('latex_');
-        $texFile = $buildDir.'/'.$jobId.'.tex';
-        file_put_contents($texFile, $latex);
-
-        $cmd = escapeshellarg($this->pdflatexBinary).' -interaction=nonstopmode -output-directory='.escapeshellarg($buildDir).' '.escapeshellarg($texFile);
-        exec($cmd, $output, $returnVar);
-
-        $pdfFile = $buildDir.'/'.$jobId.'.pdf';
-        if (! file_exists($pdfFile)) {
-            throw new RuntimeException('PDF Compilation failed. Log: '.implode("\n", $output));
-        }
-
-        $storageDir = $this->pdfStorageDir;
-        if (! is_dir($storageDir)) {
-            mkdir($storageDir, 0777, true);
-        }
-
-        $finalPdfName = 'series_'.$seriesId.'_'.date('YmdHis').'.pdf';
-        $finalPdfPath = $storageDir.'/'.$finalPdfName;
-        rename($pdfFile, $finalPdfPath);
-
-        @unlink($texFile);
-        @unlink($buildDir.'/'.$jobId.'.log');
-        @unlink($buildDir.'/'.$jobId.'.aux');
-
-        return [
-            'url' => $this->pdfUrlPrefix.'/'.$finalPdfName,
-            'path' => $finalPdfPath,
-        ];
     }
 
     /**

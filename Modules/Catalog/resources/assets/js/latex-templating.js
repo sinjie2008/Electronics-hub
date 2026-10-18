@@ -508,7 +508,7 @@ export class LatexTemplatePage {
                 headers['Content-Type'] = 'application/json';
                 fetchOptions.body = JSON.stringify(opts.body);
             }
-            const response = await fetch('catalog.php?' + params.toString(), fetchOptions);
+            const response = await window.catalogFetch('catalog.php?' + params.toString(), fetchOptions);
             const text = await response.text();
             let payload = {};
             try {

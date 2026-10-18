@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Modules\Catalog\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Modules\Catalog\Http\Controllers\CatalogController;
 use Modules\Catalog\Http\Controllers\CatalogOperationsController;
 use Modules\Catalog\Http\Controllers\CatalogReadController;
 use Modules\Catalog\Http\Controllers\LatexController;
 use Modules\Catalog\Http\Controllers\SpecSearchController;
 use Modules\Catalog\Http\Controllers\TypstController;
+use Modules\Catalog\Http\CorrelationId;
 use Modules\Catalog\Http\HttpRequestReader;
 use Modules\Catalog\Http\HttpResponder;
 use Modules\Catalog\Http\RequestInput;
@@ -31,6 +35,7 @@ use Modules\Catalog\Services\LegacySpecSearchService;
 use Modules\Catalog\Services\MediaStorageService;
 use Modules\Catalog\Services\ProductService;
 use Modules\Catalog\Services\PublicCatalogService;
+use Modules\Catalog\Services\PublicProductApiService;
 use Modules\Catalog\Services\SeriesAttributeService;
 use Modules\Catalog\Services\SeriesFieldService;
 use Modules\Catalog\Services\SpecSearchService;
@@ -56,6 +61,7 @@ final class CatalogServiceProvider extends ModuleServiceProvider
             $this->app['config']->set('catalog', $settings);
         }
         $this->app->scoped('catalog.connection', fn () => Db::fromHost());
+        $this->app->scoped(PublicProductApiService::class, fn ($app) => new PublicProductApiService($app->make('catalog.connection')));
         $this->app->scoped(RequestInput::class, function ($app): RequestInput {
             $input = new RequestInput($app['request']);
             $app->refresh('request', $input, 'setRequest');
@@ -121,6 +127,18 @@ final class CatalogServiceProvider extends ModuleServiceProvider
 
     public function boot(): void
     {
+        RateLimiter::for('catalog-public', fn (Request $request): Limit => Limit::perMinute(
+            max(1, min(600, (int) config('catalog.public_api.requests_per_minute', 120)))
+        )->by('catalog-public:'.$request->ip())->response(function (Request $request, array $headers) {
+            $out = new HttpResponder;
+            $out->setCorrelationId(CorrelationId::fromRequest($request));
+            $response = $out->sendError('TOO_MANY_REQUESTS', 'Too many requests.', 429);
+            $response->headers->add($headers);
+
+            return $response;
+        }));
+        RateLimiter::for('catalog-management', fn (Request $request): Limit => Limit::perMinute(120)
+            ->by('catalog-management:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
         // The parent auto-loads migrations into the host ledger, which is incorrect for Catalog.
         $this->registerCommands();
         $this->registerCommandSchedules();

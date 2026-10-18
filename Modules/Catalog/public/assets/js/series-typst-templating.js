@@ -314,7 +314,7 @@ export class SeriesTypstTemplatePage {
             requestInit.headers['Content-Type'] = 'application/json';
         }
 
-        const response = await fetch(url, requestInit);
+        const response = await window.catalogFetch(url, requestInit);
         const payload = await response.json().catch(() => ({}));
         const correlationId = window.AppError && window.AppError.extractCorrelationId
             ? window.AppError.extractCorrelationId(payload, response)
