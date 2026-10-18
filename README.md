@@ -41,7 +41,8 @@ cp .env.example .env
 Create an application database and a separate Catalog database on MySQL 8 or later. Set `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` for the application database, and `CATALOG_DB_DATABASE`, `CATALOG_DB_USERNAME`, and `CATALOG_DB_PASSWORD` for the Catalog database. Both connections may use the same MySQL server, but Catalog requires an unprefixed schema. Set the Redis connection values for your local Redis service. Keep real secrets in the deployment environment or local ignored `.env` file; `.env.example` contains placeholders only.
 
 ```bash
-composer install
+composer install --no-plugins --no-scripts
+composer dump-autoload
 npm ci
 php artisan key:generate
 php artisan passport:keys
@@ -51,6 +52,8 @@ php artisan db:seed --class='Modules\Catalog\Database\Seeders\CatalogDatabaseSee
 npm run build
 (cd Modules/Catalog && npm ci && npm run build:assets)
 ```
+
+The two Composer commands preserve the lockfile on a fresh installation: the merge plugin can otherwise update dependencies during its first install. The second command loads module mappings and runs normal application scripts.
 
 The host migration and seed commands initialize the application database and baseline permissions. Catalog schema migration and example-data seeding are explicit commands against the named `catalog` connection; they do not run as part of `migrate --seed`. Review and back up existing Catalog data before applying migrations. See [Catalog operations](docs/catalog.md) for upgrades and asset details.
 
@@ -171,7 +174,7 @@ GitHub Actions runs on Ubuntu with PHP 8.4, Node 24, and ephemeral MySQL 8 and R
 
 Serve only `public/` over HTTPS, set secure session cookies in production, and configure trusted reverse proxies for your deployment. Browser routes use Laravel CSRF protection and sessions; API routes use Passport scopes, rate limits, active-account checks, and policies. Passwords use Laravel hashing and strong validation. Backups remain private and downloads validate the existing archive inventory.
 
-For production, install PHP dependencies with `composer install --no-dev --prefer-dist --optimize-autoloader --classmap-authoritative`, build the host frontend with `npm ci && npm run build`, and build Catalog assets with `cd Modules/Catalog && npm ci && npm run build:assets`. Set `APP_ENV=production` and `APP_DEBUG=false`, and provide secrets and both MySQL connection settings through the environment. Generate and securely persist the Laravel application key and Passport keys before serving traffic. Serve only the `public/` directory, run `php artisan migrate --seed --force` for host schema and permissions, then run the explicit Catalog migration and seeder commands above against a reviewed Catalog database. Keep the queue worker and Laravel scheduler running, and grant the web/worker user write access only to the required `storage/` and `bootstrap/cache/` paths.
+For production, use the two-stage Composer installation above with `--no-dev` on both commands and `--optimize-autoloader --classmap-authoritative` on `dump-autoload`. Build the host frontend with `npm ci && npm run build`, and build Catalog assets with `cd Modules/Catalog && npm ci && npm run build:assets`. Set `APP_ENV=production` and `APP_DEBUG=false`, and provide secrets and both MySQL connection settings through the environment. Generate and securely persist the Laravel application key and Passport keys before serving traffic. Serve only the `public/` directory, run `php artisan migrate --seed --force` for host schema and permissions, then run the explicit Catalog migration and seeder commands above against a reviewed Catalog database. Keep the queue worker and Laravel scheduler running, and grant the web/worker user write access only to the required `storage/` and `bootstrap/cache/` paths.
 
 For optional module toggles on a read-only release, set `MODULE_STATUSES_PATH` to a shared writable JSON file outside the release and initialize it from `modules_statuses.json`. Ensure all instances use the same file. After module registration or activation changes, clear and rebuild the Laravel route and Filament component caches in the release process, then restart long-lived workers. The web UI does not run install, update, migration, or deployment commands. Configure off-host backup storage, retention, monitoring, mail, and scheduler/worker supervision for the target environment.
 

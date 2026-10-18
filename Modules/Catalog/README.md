@@ -1,6 +1,6 @@
 # Catalog
 
-Laravel 13 / nWidart Modules v13 的原生 Catalog 模块，安装到宿主 Modules/Catalog/。保留 Catalog、Spec Search、CSV、Typst、LaTeX 的六个页面和原有 API。Filament 页面改造留待后续；模块可与宿主 Filament 5 / coolsam/modules 5.x 同时运行。
+Laravel 13 / nWidart Modules v13 的原生 Catalog 模块，安装到宿主 Modules/Catalog/。保留 Catalog、Spec Search、CSV、Typst、LaTeX 的六个页面和原有 API，并提供宿主 Filament 5 / coolsam/modules 5.x 管理资源。
 
 ## 安装
 
@@ -123,4 +123,4 @@ php artisan view:cache
 
 [API.md](API.md) 记录 methods、字段、独立 envelopes 和 adapter 差异。用户要求保留原有缺陷，包括 root Typst template DELETE 的 Missing ID 500、textarea 保存为 text，以及 legacy LaTeX 空 description 的 TypeError 500。file LaTeX variables 的 PUT 继续返回原有 405。报告须将缺陷单列，不能把兼容一致视为功能通过。
 
-临时宿主验证不同于真实部署。未实际运行 WordPress 或 Octane/Swoole 时，不得宣称其通过。验证脚本、fixtures 和报告全部放在 repository 外；不保留永久 tests 或 runner。
+Public Product API 的永久测试、固定数据和来源对比 runner 位于宿主 `tests/`；实现、安全差异和实际验证结果见 [实现说明](../../docs/public-product-api-implementation.md) 与 [测试报告](../../docs/public-product-api-test-report.md)。未实际运行 WordPress 或 Octane/Swoole 时，不得宣称其通过。

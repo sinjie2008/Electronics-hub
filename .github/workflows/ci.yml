@@ -15,7 +15,7 @@ concurrency:
 jobs:
   test:
     name: PHP, frontend, and integration checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       APP_ENV: testing
@@ -96,13 +96,40 @@ jobs:
       - name: Install MySQL backup, archive, and Catalog PDF tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y mysql-client unzip zip bubblewrap util-linux texlive-latex-base texlive-latex-recommended
+          sudo apt-get install --no-install-recommends -y mysql-client unzip zip bubblewrap apparmor util-linux texlive-latex-base texlive-latex-recommended
           curl --fail --location --silent --show-error https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz -o "$RUNNER_TEMP/typst.tar.xz"
           echo "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c  $RUNNER_TEMP/typst.tar.xz" | sha256sum --check
           tar -xJf "$RUNNER_TEMP/typst.tar.xz" -C "$RUNNER_TEMP"
           sudo install "$RUNNER_TEMP/typst-x86_64-unknown-linux-musl/typst" /usr/local/bin/typst
           typst --version
           pdflatex --version
+
+      - name: Verify compiler namespace isolation
+        run: |
+          # Permit only bubblewrap to create user namespaces on Ubuntu's restricted host.
+          # Keep AppArmor restrictions enabled globally and retain every runtime sandbox flag.
+          if [ "$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null)" = "Y" ]; then
+            sudo tee /etc/apparmor.d/bwrap >/dev/null <<'PROFILE'
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile bwrap /usr/bin/bwrap flags=(unconfined) {
+            userns,
+          }
+          PROFILE
+            sudo apparmor_parser --replace /etc/apparmor.d/bwrap
+          fi
+          bwrap --version
+          if ! bwrap --unshare-all --unshare-user --disable-userns --die-with-parent --cap-drop ALL --ro-bind / / -- /bin/true 2>"$RUNNER_TEMP/compiler-isolation.log"; then
+            python3 - <<'PY'
+          import os
+          import pathlib
+          message = (pathlib.Path(os.environ['RUNNER_TEMP']) / 'compiler-isolation.log').read_text()[:2000]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error title=Compiler namespace isolation::' + message)
+          PY
+            exit 1
+          fi
+          echo "::notice title=Compiler namespace isolation::User, PID, mount and network namespaces verified."
 
       - name: Create disposable Catalog database
         run: |
@@ -184,8 +211,8 @@ jobs:
       - name: Run Pest feature and integration tests
         run: php artisan test --compact --log-junit "$RUNNER_TEMP/catalog-tests.xml"
 
-      - name: Report failing test diagnostics
-        if: failure()
+      - name: Report test totals and failure diagnostics
+        if: always()
         run: |
           python3 - <<'PY'
           import os
@@ -194,7 +221,12 @@ jobs:
 
           report = pathlib.Path(os.environ['RUNNER_TEMP']) / 'catalog-tests.xml'
           if report.exists():
-              for case in ET.parse(report).iter('testcase'):
+              root = ET.parse(report).getroot()
+              totals = root.find('testsuite')
+              if totals is not None:
+                  summary = ', '.join(key + '=' + totals.get(key, '?') for key in ('tests', 'assertions', 'failures', 'errors', 'skipped'))
+                  print('::notice title=Integration test totals::' + summary)
+              for case in root.iter('testcase'):
                   for result in list(case):
                       if result.tag in ('failure', 'error'):
                           message = (case.get('name', '') + ': ' + (result.text or result.get('message', '')))[:6000]
