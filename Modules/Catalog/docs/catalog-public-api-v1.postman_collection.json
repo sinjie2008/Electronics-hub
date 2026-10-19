@@ -1,0 +1,1220 @@
+{
+  "info": {
+    "_postman_id": "8bc68f27-747c-48a2-b7cb-0c962ca4e6c1",
+    "name": "Electronics Hub — Public Product API v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Import this collection AND catalog-public-api-v1.postman_environment.json, then select the Electronics Hub environment.\n\nSet base_url to your application origin, including http:// or https://, without /api/v1/catalog or a trailing slash. Use HTTPS in production.\n\nThe API is anonymous. No bearer token, login, database username, or password belongs in Postman.\n\nServer prerequisite: Catalog enabled, CATALOG_PUBLIC_API_ENABLED=true, and a separate SELECT-only public API database account configured. API_UNAVAILABLE (503) means server configuration must be checked.\n\nRun the collection once in its saved order with a 1500 ms delay. It covers all 10 GET endpoints plus parts query examples and four expected 422/404 errors.\n\nTree fills empty category_path, series_path, resolve_path and search_term variables from real catalog data. Parts fills empty part_search from a returned SKU. Facets fills an empty filter_key and sample values using public non-file facets. Existing paths are preserved; set auto_discover=false for manual control. Clear derived variables when changing server/catalog.\n\nPaths must be raw slash-separated resource.path values from Tree, without a leading slash; scripts encode segments and query values. Requests requiring unavailable data are skipped with a Postman Console message. Empty catalogs cannot exercise data-dependent endpoints.\n\nTo inspect a different series, set series_path and clear part_search, filter_key, filter_value and filter_value_2, then rerun Parts and Facets.\n\nDefault limits: 60 requests/minute/IP overall, 20/minute search, 30/minute parts/facets. Repeated runs may receive 429; respect Retry-After.\n\nTests verify status, JSON envelope, correlation ID, cache/security headers and endpoint response shapes. They do not replace backend visibility/security regression tests.\n\nPostman scripting reference: https://learning.postman.com/docs/tests-and-scripts/write-scripts/postman-sandbox-reference/pm-execution/"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const base = String(pm.variables.get(\"base_url\") || \"\").trim().replace(/\\/+$/, \"\");",
+          "if (!/^https?:\\/\\/[^/?#\\s]+$/.test(base)) {",
+          "    throw new Error(\"Set base_url in the selected Electronics Hub environment to your application origin (http/https, no /api path).\");",
+          "}",
+          "pm.variables.set(\"base_url\", base);",
+          "for (const key of [\"category_path\", \"series_path\", \"resolve_path\"]) {",
+          "    const path = String(pm.variables.get(key) || \"\");",
+          "    pm.variables.set(key + \"_encoded\", path.split(\"/\").map(encodeURIComponent).join(\"/\"));",
+          "}",
+          "for (const key of [\"search_term\", \"part_search\", \"filter_key\", \"filter_value\", \"filter_value_2\", \"sort\", \"direction\"]) {",
+          "    pm.variables.set(key + \"_encoded\", encodeURIComponent(String(pm.variables.get(key) || \"\")));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test(\"Response is JSON\", function () {",
+          "    pm.expect(pm.response.headers.get(\"Content-Type\") || \"\").to.match(/application\\/json/i);",
+          "    pm.expect(pm.response.json()).to.be.an(\"object\");",
+          "});",
+          "pm.test(\"Response has safe cache and content headers\", function () {",
+          "    const cache = pm.response.headers.get(\"Cache-Control\") || \"\";",
+          "    pm.expect(cache).to.include(\"no-store\");",
+          "    pm.expect(cache).to.include(\"private\");",
+          "    pm.expect(pm.response.headers.get(\"X-Content-Type-Options\")).to.equal(\"nosniff\");",
+          "});",
+          "pm.test(\"Correlation ID matches response header\", function () {",
+          "    const body = pm.response.json();",
+          "    pm.expect(body.correlationId).to.be.a(\"string\").and.not.empty;",
+          "    pm.expect(body.correlationId).to.equal(pm.response.headers.get(\"X-Correlation-ID\"));",
+          "});",
+          "pm.test(\"Response uses the public API envelope\", function () {",
+          "    const body = pm.response.json();",
+          "    if (pm.response.code === 200) {",
+          "        pm.expect(body.success).to.equal(true);",
+          "        pm.expect(body).to.have.property(\"data\");",
+          "    } else {",
+          "        pm.expect(body.success).to.equal(false);",
+          "        pm.expect(body.errorCode).to.be.a(\"string\").and.not.empty;",
+          "        pm.expect(body.message).to.be.a(\"string\").and.not.empty;",
+          "        pm.expect(body).to.have.property(\"details\");",
+          "    }",
+          "});",
+          "if (pm.response.code === 503) {",
+          "    console.warn(\"API unavailable: check Catalog module, CATALOG_PUBLIC_API_ENABLED and the separate SELECT-only database account on the server. Do not add database credentials to Postman.\");",
+          "}",
+          "if (pm.response.code === 429) {",
+          "    console.warn(\"Rate limited. Wait for Retry-After and rerun once with a 1500 ms request delay.\");",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Health and discovery",
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Health is ready and read-only\", function () {",
+                  "        pm.expect(pm.response.json().data).to.deep.equal({status: \"ok\", writeOperations: false});",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "health"
+              ]
+            },
+            "description": "Checks API readiness using the read-only connection. Expected: 200. API is disabled by default and returns 503 until securely configured."
+          },
+          "response": []
+        },
+        {
+          "name": "API descriptor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Descriptor exposes ten read-only endpoints\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.readOnly).to.equal(true);",
+                  "        pm.expect(data.endpointCount).to.equal(10);",
+                  "        pm.expect(data.endpoints).to.be.an(\"array\").with.lengthOf(10);",
+                  "        pm.expect(data.tree).to.be.an(\"array\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog"
+              ]
+            },
+            "description": "Lists the ten public endpoint patterns and the current hierarchy."
+          },
+          "response": []
+        },
+        {
+          "name": "Tree — discover real paths",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Tree is an array\", function () {",
+                  "        pm.expect(pm.response.json().data).to.be.an(\"array\");",
+                  "    });",
+                  "}",
+                  "",
+                  "if (pm.response.code === 200 && String(pm.variables.get(\"auto_discover\")).toLowerCase() === \"true\") {",
+                  "    const nodes = [];",
+                  "    const pending = [...pm.response.json().data].reverse();",
+                  "    while (pending.length) {",
+                  "        const node = pending.pop();",
+                  "        nodes.push(node);",
+                  "        if (Array.isArray(node.children)) {",
+                  "            pending.push(...[...node.children].reverse());",
+                  "        }",
+                  "    }",
+                  "    const categories = nodes.filter(node => node.type === \"category\");",
+                  "    const allSeries = nodes.filter(node => node.type === \"series\");",
+                  "    const seriesPaths = new Set(allSeries.map(node => node.path));",
+                  "    const candidates = allSeries.filter(node =>",
+                  "        ![\"fields\", \"parts\", \"facets\"].some(suffix => seriesPaths.has(node.path + \"/\" + suffix))",
+                  "    );",
+                  "    const series = candidates.find(node => node.partCount > 0) || candidates[0];",
+                  "    function fillEmpty(key, value) {",
+                  "        if (!String(pm.variables.get(key) || \"\") && value !== undefined) {",
+                  "            pm.environment.set(key, String(value));",
+                  "        }",
+                  "    }",
+                  "    fillEmpty(\"category_path\", categories[0] && categories[0].path);",
+                  "    fillEmpty(\"series_path\", series && series.path);",
+                  "    const resolved = series || categories[0] || nodes[0];",
+                  "    fillEmpty(\"resolve_path\", resolved && resolved.path);",
+                  "    fillEmpty(\"search_term\", resolved && Array.from(resolved.name).slice(0, 100).join(\"\"));",
+                  "    if (!series) {",
+                  "        console.warn(\"No series found. Series requests will be skipped; add catalog data or supply series_path manually.\");",
+                  "    }",
+                  "    if (!categories.length) {",
+                  "        console.warn(\"No category found. Category request will be skipped.\");",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/tree",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "tree"
+              ]
+            },
+            "description": "Run before path-specific requests. With auto_discover=true, fills empty environment variables using the first category and a series with parts when available. Avoids series whose child paths collide with reserved subroutes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 — Categories and series",
+      "item": [
+        {
+          "name": "Resolve catalog path",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"resolve_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Resolved resource has a breadcrumb\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.resource.path).to.equal(pm.variables.get(\"resolve_path\"));",
+                  "        pm.expect(data.breadcrumb).to.be.an(\"array\").and.not.empty;",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/resolve/{{resolve_path_encoded}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "resolve",
+                "{{resolve_path_encoded}}"
+              ]
+            },
+            "description": "Resolves a full category or series resource.path. Automatically discovered by Tree when empty."
+          },
+          "response": []
+        },
+        {
+          "name": "Category children",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"category_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Category has direct children\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.resource.type).to.equal(\"category\");",
+                  "        pm.expect(data.resource.path).to.equal(pm.variables.get(\"category_path\"));",
+                  "        pm.expect(data.breadcrumb).to.be.an(\"array\");",
+                  "        pm.expect(data.children).to.be.an(\"array\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/categories/{{category_path_encoded}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "categories",
+                "{{category_path_encoded}}"
+              ]
+            },
+            "description": "Returns the category, breadcrumb and its direct children."
+          },
+          "response": []
+        },
+        {
+          "name": "Series details",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Series includes public metadata and fields\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.resource.type).to.equal(\"series\");",
+                  "        pm.expect(data.resource.path).to.equal(pm.variables.get(\"series_path\"));",
+                  "        pm.expect(data.metadata).to.be.an(\"array\");",
+                  "        pm.expect(data.fields).to.be.an(\"array\");",
+                  "        pm.expect(data.partCount).to.be.at.least(0);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}"
+              ]
+            },
+            "description": "Returns public series metadata, field definitions and part count."
+          },
+          "response": []
+        },
+        {
+          "name": "Series fields",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Fields are public attribute definitions\", function () {",
+                  "        const fields = pm.response.json().data;",
+                  "        pm.expect(fields).to.be.an(\"array\");",
+                  "        fields.forEach(field => pm.expect(field).to.include.all.keys(\"id\", \"key\", \"label\", \"type\", \"defaultValue\", \"sortOrder\", \"required\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/fields",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "fields"
+              ]
+            },
+            "description": "Returns a bare array of public product attribute field definitions."
+          },
+          "response": []
+        },
+        {
+          "name": "Series parts — pagination",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Parts include public fields and pagination\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.series.type).to.equal(\"series\");",
+                  "        pm.expect(data.fields).to.be.an(\"array\");",
+                  "        pm.expect(data.parts).to.be.an(\"array\");",
+                  "        pm.expect(data.pagination).to.include.all.keys(\"page\", \"per_page\", \"total\", \"last_page\");",
+                  "        pm.expect(data.pagination.page).to.be.at.least(1);",
+                  "        pm.expect(data.pagination.per_page).to.be.within(1, 100);",
+                  "        pm.expect(data.parts.length).to.be.at.most(data.pagination.per_page);",
+                  "        data.parts.forEach(part => pm.expect(part).to.include.all.keys(\"id\", \"sku\", \"name\", \"description\", \"values\"));",
+                  "    });",
+                  "}",
+                  "if (pm.response.code === 200 && String(pm.variables.get(\"auto_discover\")).toLowerCase() === \"true\" &&",
+                  "    !String(pm.variables.get(\"part_search\") || \"\")) {",
+                  "    const first = pm.response.json().data.parts[0];",
+                  "    if (first && first.sku) {",
+                  "        pm.environment.set(\"part_search\", Array.from(first.sku).slice(0, 100).join(\"\"));",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/parts?page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "parts"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": "Positive integer. Out-of-range pages clamp to the last page."
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}",
+                  "description": "1 through 100; default 25."
+                }
+              ]
+            },
+            "description": "Set page and per_page in the environment. Empty part_search is filled with the first returned SKU for the query example."
+          },
+          "response": []
+        },
+        {
+          "name": "Series facets — discover sample filters",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Facets include counts and public value buckets\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.series.type).to.equal(\"series\");",
+                  "        pm.expect(data.totalParts).to.be.at.least(0);",
+                  "        pm.expect(data.facets).to.be.an(\"array\");",
+                  "        data.facets.forEach(facet => {",
+                  "            pm.expect(facet).to.include.all.keys(\"key\", \"label\", \"type\", \"values\");",
+                  "            pm.expect(facet.values).to.be.an(\"array\");",
+                  "            if (facet.type === \"file\") {",
+                  "                pm.expect(facet.values).to.have.lengthOf(0);",
+                  "            }",
+                  "        });",
+                  "    });",
+                  "}",
+                  "",
+                  "if (pm.response.code === 200 && String(pm.variables.get(\"auto_discover\")).toLowerCase() === \"true\" &&",
+                  "    !String(pm.variables.get(\"filter_key\") || \"\")) {",
+                  "    const facet = pm.response.json().data.facets.find(item =>",
+                  "        item.type !== \"file\" && Array.isArray(item.values) && item.values.some(bucket =>",
+                  "            [\"string\", \"number\"].includes(typeof bucket.value) && String(bucket.value).length <= 255",
+                  "        )",
+                  "    );",
+                  "    if (facet) {",
+                  "        const buckets = facet.values.filter(bucket =>",
+                  "            [\"string\", \"number\"].includes(typeof bucket.value) && String(bucket.value).length <= 255",
+                  "        );",
+                  "        pm.environment.set(\"filter_key\", facet.key);",
+                  "        pm.environment.set(\"filter_value\", String(buckets[0].value));",
+                  "        pm.environment.set(\"filter_value_2\", String((buckets[1] || buckets[0]).value));",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/facets",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "facets"
+              ]
+            },
+            "description": "Returns unfiltered public facets. If filter_key is empty and auto_discover=true, captures a public non-file field and one or two actual facet values."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 — Search and parts query examples",
+      "item": [
+        {
+          "name": "Global catalog search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Global search has nodes and at most 100 parts\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.query).to.equal(String(pm.variables.get(\"search_term\") || \"\").trim());",
+                  "        pm.expect(data.nodes).to.be.an(\"array\");",
+                  "        pm.expect(data.parts).to.be.an(\"array\");",
+                  "        pm.expect(data.parts.length).to.be.at.most(100);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/search?q={{search_term_encoded}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{search_term_encoded}}",
+                  "description": "Optional, maximum 100 characters. Empty query returns empty result lists."
+                }
+              ]
+            },
+            "description": "Searches category/series names and part SKU/name/description. Does not accept pagination or field filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Parts — search, sort and paginate",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Parts include public fields and pagination\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.series.type).to.equal(\"series\");",
+                  "        pm.expect(data.fields).to.be.an(\"array\");",
+                  "        pm.expect(data.parts).to.be.an(\"array\");",
+                  "        pm.expect(data.pagination).to.include.all.keys(\"page\", \"per_page\", \"total\", \"last_page\");",
+                  "        pm.expect(data.pagination.page).to.be.at.least(1);",
+                  "        pm.expect(data.pagination.per_page).to.be.within(1, 100);",
+                  "        pm.expect(data.parts.length).to.be.at.most(data.pagination.per_page);",
+                  "        data.parts.forEach(part => pm.expect(part).to.include.all.keys(\"id\", \"sku\", \"name\", \"description\", \"values\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+            "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/parts?search={{part_search_encoded}}&sort={{sort_encoded}}&direction={{direction_encoded}}&page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "parts"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{part_search_encoded}}",
+                  "description": "Literal substring search, maximum 100 characters."
+                },
+                {
+                  "key": "sort",
+                "value": "{{sort_encoded}}",
+                  "description": "id, sku, name, or a public non-file attribute key."
+                },
+                {
+                  "key": "direction",
+                "value": "{{direction_encoded}}",
+                  "description": "asc or desc."
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": "Positive integer. Out-of-range pages clamp to the last page."
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}",
+                  "description": "1 through 100; default 25."
+                }
+              ]
+            },
+            "description": "Edit part_search, sort and direction in the environment. Search includes public non-file attribute values; number fields sort numerically."
+          },
+          "response": []
+        },
+        {
+          "name": "Parts — field filter (OR values)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\",\"filter_key\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    pm.test(\"Parts include public fields and pagination\", function () {",
+                  "        const data = pm.response.json().data;",
+                  "        pm.expect(data.series.type).to.equal(\"series\");",
+                  "        pm.expect(data.fields).to.be.an(\"array\");",
+                  "        pm.expect(data.parts).to.be.an(\"array\");",
+                  "        pm.expect(data.pagination).to.include.all.keys(\"page\", \"per_page\", \"total\", \"last_page\");",
+                  "        pm.expect(data.pagination.page).to.be.at.least(1);",
+                  "        pm.expect(data.pagination.per_page).to.be.within(1, 100);",
+                  "        pm.expect(data.parts.length).to.be.at.most(data.pagination.per_page);",
+                  "        data.parts.forEach(part => pm.expect(part).to.include.all.keys(\"id\", \"sku\", \"name\", \"description\", \"values\"));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/parts?filter[{{filter_key_encoded}}][]={{filter_value_encoded}}&filter[{{filter_key_encoded}}][]={{filter_value_2_encoded}}&page={{page}}&per_page={{per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "parts"
+              ],
+              "query": [
+                {
+                  "key": "filter[{{filter_key_encoded}}][]",
+                  "value": "{{filter_value_encoded}}",
+                  "description": "Public non-file field key and exact value from Facets."
+                },
+                {
+                  "key": "filter[{{filter_key_encoded}}][]",
+                  "value": "{{filter_value_2_encoded}}",
+                  "description": "OR with the first value. Disable this row to use one value; add a different field key to combine with AND."
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": "Positive integer. Out-of-range pages clamp to the last page."
+                },
+                {
+                  "key": "per_page",
+                  "value": "{{per_page}}",
+                  "description": "1 through 100; default 25."
+                }
+              ]
+            },
+            "description": "Run Facets first to capture a real public filter field and values, or set them manually. Skipped when no usable public facet exists. Different field keys combine with AND."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 — Expected validation errors (GET only)",
+      "description": "These requests intentionally expect 422/404. They require the API to be enabled; API_UNAVAILABLE is not a passing validation result.",
+      "item": [
+        {
+          "name": "Reject unknown query parameter — 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(422);",
+                  "});",
+                  "pm.test(\"Error code INVALID_QUERY\", function () {",
+                  "    pm.expect(pm.response.json().errorCode).to.equal(\"INVALID_QUERY\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/health?unexpected=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "health"
+              ],
+              "query": [
+                {
+                  "key": "unexpected",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Health accepts no query parameters."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject search over 100 characters — 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(422);",
+                  "});",
+                  "pm.test(\"Error code INVALID_QUERY\", function () {",
+                  "    pm.expect(pm.response.json().errorCode).to.equal(\"INVALID_QUERY\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/search?q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                }
+              ]
+            },
+            "description": "101 ASCII characters, exceeding the configured default maximum of 100."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject per_page above 100 — 422",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const missing = [\"series_path\"].filter(key => !String(pm.variables.get(key) || \"\"));",
+                  "if (missing.length) {",
+                  "    console.warn(\"Skipping \" + pm.info.requestName + \": set \" + missing.join(\", \") + \" in the selected environment, or run Tree / Facets first.\");",
+                  "    pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(422);",
+                  "});",
+                  "pm.test(\"Error code INVALID_QUERY\", function () {",
+                  "    pm.expect(pm.response.json().errorCode).to.equal(\"INVALID_QUERY\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/series/{{series_path_encoded}}/parts?per_page=101",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "series",
+                "{{series_path_encoded}}",
+                "parts"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "101"
+                }
+              ]
+            },
+            "description": "per_page is limited to 100."
+          },
+          "response": []
+        },
+        {
+          "name": "Unknown API route — 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", function () {",
+                  "    pm.expect(pm.response.code).to.equal(404);",
+                  "});",
+                  "pm.test(\"Error code NOT_FOUND\", function () {",
+                  "    pm.expect(pm.response.json().errorCode).to.equal(\"NOT_FOUND\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/catalog/__postman_missing_endpoint__",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "__postman_missing_endpoint__"
+              ]
+            },
+            "description": "Confirms unknown routes retain the public JSON error envelope."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

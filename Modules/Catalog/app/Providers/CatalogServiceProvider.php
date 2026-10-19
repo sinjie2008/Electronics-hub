@@ -41,6 +41,7 @@ final class CatalogServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+        $this->app->register(PublicApiServiceProvider::class);
         $this->app->scoped(RequestInput::class, function ($app): RequestInput {
             $input = new RequestInput($app['request']);
             $app->refresh('request', $input, 'setRequest');

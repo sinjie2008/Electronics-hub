@@ -9,6 +9,8 @@ use Laravel\Passport\Http\Middleware\CheckToken;
 use Laravel\Passport\Http\Middleware\EnsureClientIsResourceOwner;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 
+require base_path('Modules/Catalog/routes/public-api.php');
+
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::get('/health', HealthController::class)->name('health');
 
